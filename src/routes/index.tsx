@@ -1,5 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import { format, startOfWeek, endOfWeek } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import type { DateRange } from "react-day-picker";
 import {
   LayoutDashboard,
   FileBarChart,
@@ -16,6 +20,11 @@ import {
   DollarSign,
   Percent,
   Receipt,
+  Brain,
+  Moon,
+  Sun,
+  CalendarIcon,
+  Loader2,
 } from "lucide-react";
 import {
   BarChart,
@@ -40,29 +49,32 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { useServerFn } from "@tanstack/react-start";
+import { analyzeDre } from "@/lib/ai-analysis.functions";
+import logoAsset from "@/assets/itadaki-logo.png.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "DRE Delivery — Gestão Financeira para Restaurantes" },
+      { title: "Itadaki Sushi — DRE Delivery" },
       {
         name: "description",
         content:
-          "Painel de DRE e gestão financeira para delivery de restaurantes: KPIs, CMV, margem e motor de custos com IA.",
+          "Painel de DRE semanal do Itadaki Sushi: KPIs, CMV, canais e análise IA de gestão financeira do delivery.",
       },
-      { property: "og:title", content: "DRE Delivery — Gestão Financeira" },
+      { property: "og:title", content: "Itadaki Sushi — DRE Delivery" },
       {
         property: "og:description",
-        content:
-          "Controle margem, CMV, canais e lucro líquido do seu delivery em um só lugar.",
+        content: "Controle margem, CMV e lucro do delivery com análise IA.",
       },
     ],
   }),
@@ -129,14 +141,14 @@ function KpiCard({
 }) {
   const good = positive;
   return (
-    <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60">
+    <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-slate-800">
       <div className="flex items-start justify-between">
-        <span className="text-sm font-medium text-slate-500">{title}</span>
-        <div className="grid h-9 w-9 place-items-center rounded-lg bg-slate-100 text-slate-600">
+        <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</span>
+        <div className="grid h-9 w-9 place-items-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
           <Icon className="h-4 w-4" />
         </div>
       </div>
-      <div className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
+      <div className="mt-4 text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
         {value}
       </div>
       {trend && (
@@ -144,15 +156,11 @@ function KpiCard({
           <span
             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
               good
-                ? "bg-emerald-50 text-emerald-700"
-                : "bg-red-50 text-red-700"
+                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
+                : "bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-400"
             }`}
           >
-            {trendUp ? (
-              <ArrowUp className="h-3 w-3" />
-            ) : (
-              <ArrowDown className="h-3 w-3" />
-            )}
+            {trendUp ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
             {trendLabel}
           </span>
         </div>
@@ -181,12 +189,12 @@ function DreRow({
   if (!children) {
     return (
       <div
-        className={`flex items-center justify-between border-b border-slate-100 px-5 py-4 ${
+        className={`flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800 ${
           highlight
-            ? "bg-emerald-50/60 font-semibold text-emerald-800"
+            ? "bg-emerald-50/60 font-semibold text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400"
             : muted
-              ? "text-slate-600"
-              : "text-slate-800"
+              ? "text-slate-600 dark:text-slate-400"
+              : "text-slate-800 dark:text-slate-200"
         }`}
       >
         <span>{label}</span>
@@ -195,15 +203,15 @@ function DreRow({
     );
   }
   return (
-    <AccordionItem value={label} className="border-b border-slate-100">
+    <AccordionItem value={label} className="border-b border-slate-100 dark:border-slate-800">
       <AccordionTrigger className="px-5 py-4 hover:no-underline">
         <div className="flex w-full items-center justify-between pr-2">
-          <span className="font-medium text-slate-800">{label}</span>
-          <span className="font-mono tabular-nums text-slate-900">{value}</span>
+          <span className="font-medium text-slate-800 dark:text-slate-200">{label}</span>
+          <span className="font-mono tabular-nums text-slate-900 dark:text-white">{value}</span>
         </div>
       </AccordionTrigger>
-      <AccordionContent className="bg-slate-50/60 px-5 pb-3 pt-1">
-        <div className="divide-y divide-slate-200/70">{children}</div>
+      <AccordionContent className="bg-slate-50/60 px-5 pb-3 pt-1 dark:bg-slate-950/40">
+        <div className="divide-y divide-slate-200/70 dark:divide-slate-800">{children}</div>
       </AccordionContent>
     </AccordionItem>
   );
@@ -211,26 +219,87 @@ function DreRow({
 
 function SubRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between py-2.5 text-sm text-slate-600">
+    <div className="flex items-center justify-between py-2.5 text-sm text-slate-600 dark:text-slate-400">
       <span>{label}</span>
       <span className="font-mono tabular-nums">{value}</span>
     </div>
   );
 }
 
+function useDarkMode() {
+  const [dark, setDark] = useState(false);
+  useEffect(() => {
+    const stored = localStorage.getItem("theme");
+    const initial = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    setDark(initial);
+  }, []);
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    localStorage.setItem("theme", dark ? "dark" : "light");
+  }, [dark]);
+  return [dark, setDark] as const;
+}
+
 function Dashboard() {
   const [sobras, setSobras] = useState<Record<string, string>>({});
+  const [dark, setDark] = useDarkMode();
+  const [range, setRange] = useState<DateRange | undefined>(() => {
+    const now = new Date();
+    return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }) };
+  });
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiContent, setAiContent] = useState<string>("");
+  const [aiError, setAiError] = useState<string>("");
+  const analyze = useServerFn(analyzeDre);
+
+  const rangeLabel = range?.from
+    ? range.to
+      ? `${format(range.from, "dd MMM", { locale: ptBR })} → ${format(range.to, "dd MMM yyyy", { locale: ptBR })}`
+      : format(range.from, "dd MMM yyyy", { locale: ptBR })
+    : "Escolher período";
+
+  async function runAi() {
+    setAiOpen(true);
+    if (aiContent || aiLoading) return;
+    setAiLoading(true);
+    setAiError("");
+    try {
+      const res = await analyze({
+        data: {
+          periodo: rangeLabel,
+          dre: {
+            receitaBruta: 95200,
+            custosVariaveis: 66500,
+            custosFixos: 16250,
+            lucroLiquido: 12450,
+            margemContribuicao: 18.5,
+            cmv: 31.2,
+            ticketMedio: 95.5,
+            canais: channelData.map((c) => ({ nome: c.name, percentual: c.value })),
+          },
+        },
+      });
+      setAiContent(res.content);
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "Erro ao consultar a IA");
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-slate-900 text-slate-200 lg:flex">
-        <div className="flex items-center gap-2 px-6 py-6">
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 text-slate-900">
-            <TrendingUp className="h-5 w-5" />
-          </div>
+      <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-slate-900 text-slate-200 lg:flex dark:bg-slate-950 dark:border-r dark:border-slate-800">
+        <div className="flex items-center gap-3 px-6 py-6">
+          <img
+            src={logoAsset.url}
+            alt="Itadaki Sushi"
+            className="h-11 w-11 rounded-lg bg-slate-800 object-contain p-1"
+          />
           <div>
-            <div className="text-sm font-semibold text-white">Prato Certo</div>
+            <div className="text-sm font-semibold text-white">Itadaki Sushi</div>
             <div className="text-xs text-slate-400">Finance OS</div>
           </div>
         </div>
@@ -249,43 +318,72 @@ function Dashboard() {
             </button>
           ))}
         </nav>
-        <div className="mt-auto px-6 py-6 text-xs text-slate-500">
-          v1.0 · Julho 2026
-        </div>
+        <div className="mt-auto px-6 py-6 text-xs text-slate-500">v1.0 · Julho 2026</div>
       </aside>
 
       {/* Main */}
       <div className="lg:pl-64">
         {/* Header */}
-        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
-          <div className="min-w-0">
-            <h1 className="truncate text-lg font-semibold text-slate-900">
-              Dashboard Financeiro
-            </h1>
-            <p className="hidden text-xs text-slate-500 sm:block">
-              Visão consolidada dos canais de delivery
-            </p>
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-6 dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex min-w-0 items-center gap-3">
+            <img
+              src={logoAsset.url}
+              alt="Itadaki Sushi"
+              className="h-10 w-10 shrink-0 rounded-lg bg-slate-900 object-contain p-1 lg:hidden"
+            />
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-semibold text-slate-900 dark:text-white">
+                Dashboard Financeiro
+              </h1>
+              <p className="hidden text-xs text-slate-500 sm:block dark:text-slate-400">
+                Apuração semanal · Itadaki Sushi
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Select defaultValue="jul-26">
-              <SelectTrigger className="w-[150px] bg-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="mai-26">Maio 2026</SelectItem>
-                <SelectItem value="jun-26">Junho 2026</SelectItem>
-                <SelectItem value="jul-26">Julho 2026</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" className="hidden sm:inline-flex">
-              <Download className="mr-2 h-4 w-4" />
-              Exportar Relatório
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-9 gap-2 bg-white dark:bg-slate-900">
+                  <CalendarIcon className="h-4 w-4" />
+                  <span className="hidden sm:inline text-xs">{rangeLabel}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={range}
+                  onSelect={setRange}
+                  numberOfMonths={1}
+                  locale={ptBR}
+                  weekStartsOn={1}
+                />
+              </PopoverContent>
+            </Popover>
+
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 bg-white dark:bg-slate-900"
+              onClick={runAi}
+              title="Análise IA — CEO QI 200"
+            >
+              <Brain className="h-4 w-4 text-indigo-500" />
             </Button>
-            <Avatar className="h-9 w-9">
-              <AvatarFallback className="bg-emerald-100 text-emerald-800">
-                RC
-              </AvatarFallback>
-            </Avatar>
+
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 bg-white dark:bg-slate-900"
+              onClick={() => setDark(!dark)}
+              title={dark ? "Modo claro" : "Modo escuro"}
+            >
+              {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+
+            <Button variant="outline" className="hidden md:inline-flex">
+              <Download className="mr-2 h-4 w-4" />
+              Exportar
+            </Button>
           </div>
         </header>
 
@@ -298,7 +396,7 @@ function Dashboard() {
               icon={Percent}
               trend
               trendUp
-              trendLabel="+2% vs último mês"
+              trendLabel="+2% vs semana passada"
             />
             <KpiCard
               title="CMV Real"
@@ -306,7 +404,7 @@ function Dashboard() {
               icon={Receipt}
               trend
               trendUp={false}
-              trendLabel="-1.4% vs último mês"
+              trendLabel="-1.4% vs semana passada"
             />
             <KpiCard
               title="Lucro Líquido"
@@ -314,7 +412,7 @@ function Dashboard() {
               icon={DollarSign}
               trend
               trendUp
-              trendLabel="+8.2% vs último mês"
+              trendLabel="+8.2% vs semana passada"
             />
             <KpiCard
               title="Ticket Médio"
@@ -328,25 +426,25 @@ function Dashboard() {
 
           {/* Charts */}
           <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 lg:col-span-2">
+            <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 lg:col-span-2 dark:bg-slate-900 dark:ring-slate-800">
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <h3 className="text-base font-semibold text-slate-900">
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">
                     Receita vs Custos
                   </h3>
-                  <p className="text-xs text-slate-500">Últimos 6 meses</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Últimos 6 meses</p>
                 </div>
-                <Badge variant="secondary" className="bg-slate-100 text-slate-600">
+                <Badge variant="secondary" className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                   BRL
                 </Badge>
               </div>
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={revenueData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                    <XAxis dataKey="mes" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} className="dark:!stroke-slate-800" />
+                    <XAxis dataKey="mes" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
                     <YAxis
-                      stroke="#64748b"
+                      stroke="#94a3b8"
                       fontSize={12}
                       tickLine={false}
                       axisLine={false}
@@ -368,12 +466,12 @@ function Dashboard() {
               </div>
             </div>
 
-            <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60">
+            <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-slate-800">
               <div className="mb-4">
-                <h3 className="text-base font-semibold text-slate-900">
+                <h3 className="text-base font-semibold text-slate-900 dark:text-white">
                   Vendas por Canal
                 </h3>
-                <p className="text-xs text-slate-500">Distribuição mensal</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Distribuição semanal</p>
               </div>
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
@@ -395,18 +493,12 @@ function Dashboard() {
               </div>
               <ul className="mt-2 space-y-2">
                 {channelData.map((c) => (
-                  <li
-                    key={c.name}
-                    className="flex items-center justify-between text-sm"
-                  >
-                    <span className="flex items-center gap-2 text-slate-700">
-                      <span
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{ background: c.color }}
-                      />
+                  <li key={c.name} className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: c.color }} />
                       {c.name}
                     </span>
-                    <span className="font-medium text-slate-900">{c.value}%</span>
+                    <span className="font-medium text-slate-900 dark:text-white">{c.value}%</span>
                   </li>
                 ))}
               </ul>
@@ -414,14 +506,14 @@ function Dashboard() {
           </section>
 
           {/* DRE */}
-          <section className="rounded-xl bg-white shadow-sm ring-1 ring-slate-200/60">
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <section className="rounded-xl bg-white shadow-sm ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
               <div>
-                <h3 className="text-base font-semibold text-slate-900">
+                <h3 className="text-base font-semibold text-slate-900 dark:text-white">
                   DRE — Demonstração do Resultado
                 </h3>
-                <p className="text-xs text-slate-500">
-                  Clique nas linhas para expandir os detalhes
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Período: {rangeLabel}
                 </p>
               </div>
               <ChevronDown className="h-4 w-4 text-slate-400" />
@@ -450,17 +542,17 @@ function Dashboard() {
           </section>
 
           {/* Motor de Custos IA */}
-          <section className="rounded-xl bg-white shadow-sm ring-1 ring-slate-200/60">
-            <div className="border-b border-slate-100 px-5 py-4">
+          <section className="rounded-xl bg-white shadow-sm ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-slate-800">
+            <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
                   <Sparkles className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-semibold text-slate-900">
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">
                     Motor de Custos IA
                   </h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     Upload de notas + apuração automática de CMV
                   </p>
                 </div>
@@ -468,33 +560,32 @@ function Dashboard() {
             </div>
 
             <div className="grid grid-cols-1 gap-0 lg:grid-cols-2">
-              {/* Left: uploads */}
-              <div className="border-b border-slate-100 p-5 lg:border-b-0 lg:border-r">
-                <h4 className="mb-3 text-sm font-semibold text-slate-700">
+              <div className="border-b border-slate-100 p-5 lg:border-b-0 lg:border-r dark:border-slate-800">
+                <h4 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">
                   Entrada de Notas
                 </h4>
-                <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center transition hover:border-emerald-400 hover:bg-emerald-50/40">
+                <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center transition hover:border-emerald-400 hover:bg-emerald-50/40 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-emerald-500">
                   <UploadCloud className="h-8 w-8 text-slate-400" />
-                  <p className="mt-3 text-sm font-medium text-slate-700">
+                  <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-300">
                     Arraste as fotos das notas fiscais
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     ou clique para fazer upload (JPG, PNG, PDF)
                   </p>
                   <input type="file" className="hidden" multiple />
                 </label>
 
                 <div className="mt-5">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Últimas notas lidas pela IA
                   </p>
                   <ul className="space-y-2">
                     {notasLidas.map((n) => (
                       <li
                         key={n}
-                        className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                        className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
                       >
-                        <span className="flex items-center gap-2 text-slate-700">
+                        <span className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                           <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                           {n}
                         </span>
@@ -505,9 +596,8 @@ function Dashboard() {
                 </div>
               </div>
 
-              {/* Right: sobras */}
               <div className="p-5">
-                <h4 className="mb-3 text-sm font-semibold text-slate-700">
+                <h4 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">
                   Apuração de Sobras
                 </h4>
                 <Tabs defaultValue="refrigerados">
@@ -525,9 +615,9 @@ function Dashboard() {
                         {tab.list.map((item) => (
                           <div
                             key={item.nome}
-                            className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2"
+                            className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950"
                           >
-                            <span className="text-sm font-medium text-slate-700">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                               {item.nome}
                             </span>
                             <div className="flex items-center gap-2">
@@ -543,7 +633,7 @@ function Dashboard() {
                                 }
                                 className="h-9 w-24 text-right"
                               />
-                              <span className="w-8 text-xs text-slate-500">
+                              <span className="w-8 text-xs text-slate-500 dark:text-slate-400">
                                 {item.unidade}
                               </span>
                             </div>
@@ -563,6 +653,54 @@ function Dashboard() {
           </section>
         </main>
       </div>
+
+      {/* AI Analysis Sheet */}
+      <Sheet open={aiOpen} onOpenChange={setAiOpen}>
+        <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
+                <Brain className="h-4 w-4" />
+              </div>
+              CEO IA · QI 200
+            </SheetTitle>
+            <SheetDescription>
+              Análise da DRE de {rangeLabel} — lacunas, alertas e ações prioritárias.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-6 px-4 pb-8">
+            {aiLoading && (
+              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Analisando sua DRE...
+              </div>
+            )}
+            {aiError && (
+              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
+                {aiError}
+              </div>
+            )}
+            {aiContent && (
+              <article className="prose prose-sm max-w-none prose-headings:text-slate-900 prose-p:text-slate-700 prose-strong:text-slate-900 dark:prose-invert dark:prose-headings:text-white dark:prose-p:text-slate-300 dark:prose-strong:text-white">
+                <ReactMarkdown>{aiContent}</ReactMarkdown>
+              </article>
+            )}
+            {aiContent && (
+              <Button
+                variant="outline"
+                className="mt-6 w-full"
+                onClick={() => {
+                  setAiContent("");
+                  runAi();
+                }}
+              >
+                Reanalisar
+              </Button>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
