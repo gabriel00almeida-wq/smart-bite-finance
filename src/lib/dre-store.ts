@@ -61,6 +61,8 @@ export const EMPTY_WEEK: WeekData = {
     { label: "Cupom / Frete grátis", valor: 0 },
     { label: "Cashback / Fidelidade", valor: 0 },
   ],
+  simplesAliquota: 6,
+  impostoPago: false,
 };
 
 export const SAMPLE_WEEK: WeekData = {
