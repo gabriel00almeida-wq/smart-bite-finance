@@ -127,15 +127,29 @@ export const chatCerebro = createServerFn({ method: "POST" })
 DRE atual (JSON):
 ${JSON.stringify(data.currentWeek, null, 2)}`;
 
+    const gatewayMessages = data.messages.map((m) => {
+      if (m.role === "user" && m.images && m.images.length > 0) {
+        return {
+          role: "user" as const,
+          content: [
+            { type: "text", text: m.content || "(imagem em anexo)" },
+            ...m.images.map((url) => ({ type: "image_url", image_url: { url } })),
+          ],
+        };
+      }
+      return { role: m.role, content: m.content };
+    });
+
     const json = await callGateway({
       model: "google/gemini-3.6-flash",
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "system", content: contextMsg },
-        ...data.messages,
+        ...gatewayMessages,
       ],
     });
+
 
     const raw: string = json.choices?.[0]?.message?.content ?? "{}";
     let parsed: { reply?: string; patch?: unknown } = {};
