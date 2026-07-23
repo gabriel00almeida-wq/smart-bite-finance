@@ -20,7 +20,9 @@ export type WeekData = {
   fixos: LineItem[];
   marketing: LineItem[];
   promocoes: LineItem[];
+  totalPedidosOverride?: number; // se > 0, usa este total ao invés da soma por canal
 };
+
 
 export const DEFAULT_CHANNELS: ChannelRow[] = [
   { nome: "iFood", receita: 0, pedidos: 0, taxas: 0, descontos: 0, color: "#EA1D2C" },
