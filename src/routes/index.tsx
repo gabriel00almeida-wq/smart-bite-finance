@@ -687,53 +687,14 @@ function Dashboard() {
         periodLabel={rangeLabel}
       />
 
-      {/* AI Analysis Sheet */}
-      <Sheet open={aiOpen} onOpenChange={setAiOpen}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
-                <Brain className="h-4 w-4" />
-              </div>
-              CEO IA · QI 200
-            </SheetTitle>
-            <SheetDescription>
-              Análise da DRE de {rangeLabel} — lacunas, alertas e ações prioritárias.
-            </SheetDescription>
-          </SheetHeader>
-
-          <div className="mt-6 px-4 pb-8">
-            {aiLoading && (
-              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Analisando sua DRE...
-              </div>
-            )}
-            {aiError && (
-              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
-                {aiError}
-              </div>
-            )}
-            {aiContent && (
-              <article className="prose prose-sm max-w-none prose-headings:text-slate-900 prose-p:text-slate-700 prose-strong:text-slate-900 dark:prose-invert dark:prose-headings:text-white dark:prose-p:text-slate-300 dark:prose-strong:text-white">
-                <ReactMarkdown>{aiContent}</ReactMarkdown>
-              </article>
-            )}
-            {aiContent && (
-              <Button
-                variant="outline"
-                className="mt-6 w-full"
-                onClick={() => {
-                  setAiContent("");
-                  runAi();
-                }}
-              >
-                Reanalisar
-              </Button>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* AI Chat Sheet — Cérebro */}
+      <AiChatSheet
+        open={aiOpen}
+        onOpenChange={setAiOpen}
+        week={week}
+        onWeekChange={handleWeekChangeFromChat}
+        periodLabel={rangeLabel}
+      />
     </div>
   );
 }
