@@ -107,6 +107,7 @@ Regras do patch:
 - Para custos fixos novos, use label descritivo curto ("Aluguel", "Folha", "Energia").
 - Se o usuário só quer conversar (perguntou algo, pediu análise), devolva "patch": {}.
 - NUNCA invente dados. Só extraia o que foi dito.
+- Se o usuário enviar IMAGENS (prints de painel iFood/99Food, notas fiscais, planilhas, fotos de recibos), LEIA os números visíveis nelas e extraia para o patch da mesma forma. Cite no reply o que você conseguiu ler.
 
 Exemplos:
 Usuário: "vendi 12500 no ifood com 130 pedidos"
@@ -117,6 +118,7 @@ Usuário: "gastei 800 em embalagens e 6500 de aluguel"
 
 Usuário: "como está minha margem?"
 → { "reply": "Sua margem de contribuição está em X% ... [análise]", "patch": {} }`;
+
 
 export const chatCerebro = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => ChatSchema.parse(data))
