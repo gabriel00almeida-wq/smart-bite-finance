@@ -129,7 +129,7 @@ export function EditWeekSheet({ open, onOpenChange, initial, onSave, periodLabel
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          <Accordion type="multiple" defaultValue={["receitas", "variaveis", "cmv", "fixos", "mkt"]}>
+          <Accordion type="multiple" defaultValue={["receitas", "variaveis", "cmv", "fixos", "mkt", "promo"]}>
             <AccordionItem value="receitas">
               <AccordionTrigger>Receitas por canal</AccordionTrigger>
               <AccordionContent>
