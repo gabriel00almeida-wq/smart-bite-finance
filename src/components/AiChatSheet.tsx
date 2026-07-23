@@ -236,13 +236,26 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
                     : "bg-white text-slate-800 ring-1 ring-slate-200/60 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-800"
                 }`}
               >
+                {m.images && m.images.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {m.images.map((src, idx) => (
+                      <img
+                        key={idx}
+                        src={src}
+                        alt=""
+                        className="h-24 w-24 rounded-md object-cover ring-1 ring-white/30"
+                      />
+                    ))}
+                  </div>
+                )}
                 {m.role === "assistant" ? (
                   <article className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-headings:mt-2 prose-headings:mb-1 dark:prose-invert">
                     <ReactMarkdown>{m.content}</ReactMarkdown>
                   </article>
                 ) : (
-                  m.content
+                  m.content || <span className="italic opacity-70">imagem enviada</span>
                 )}
+
                 {m.patchApplied && (
                   <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
                     <Sparkles className="h-3 w-3" />
