@@ -134,11 +134,10 @@ ${JSON.stringify(data.currentWeek, null, 2)}`;
     });
 
     const raw: string = json.choices?.[0]?.message?.content ?? "{}";
-    let parsed: { reply?: string; patch?: Record<string, unknown> } = {};
+    let parsed: { reply?: string; patch?: unknown } = {};
     try {
       parsed = JSON.parse(raw);
     } catch {
-      // fallback: try to strip code fences
       const cleaned = raw.replace(/^```json\s*|\s*```$/g, "").trim();
       try {
         parsed = JSON.parse(cleaned);
@@ -147,7 +146,7 @@ ${JSON.stringify(data.currentWeek, null, 2)}`;
       }
     }
     return {
-      reply: parsed.reply ?? "",
-      patch: parsed.patch ?? {},
+      reply: typeof parsed.reply === "string" ? parsed.reply : "",
+      patchJson: JSON.stringify(parsed.patch ?? {}),
     };
   });
