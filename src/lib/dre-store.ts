@@ -33,7 +33,7 @@ export type WeekData = {
 export const DEFAULT_CHANNELS: ChannelRow[] = [
   { nome: "iFood", receita: 0, pedidos: 0, taxas: 0, descontos: 0, color: "#EA1D2C" },
   { nome: "99Food", receita: 0, pedidos: 0, taxas: 0, descontos: 0, color: "#FFD100" },
-  { nome: "Anotai", receita: 0, pedidos: 0, taxas: 0, descontos: 0, color: "#22C55E" },
+  { nome: "Anotai", receita: 0, pedidos: 0, taxas: 0, descontos: 0, color: "#2563EB" },
   { nome: "Próprio / WhatsApp", receita: 0, pedidos: 0, taxas: 0, descontos: 0, color: "#3B82F6" },
   { nome: "Salão", receita: 0, pedidos: 0, taxas: 0, descontos: 0, color: "#8B5CF6" },
 ];
@@ -69,7 +69,7 @@ export const SAMPLE_WEEK: WeekData = {
   channels: [
     { nome: "iFood", receita: 42840, pedidos: 448, taxas: 10710, descontos: 1200, color: "#EA1D2C" },
     { nome: "99Food", receita: 23800, pedidos: 251, taxas: 5236, descontos: 800, color: "#FFD100" },
-    { nome: "Anotai", receita: 28560, pedidos: 298, taxas: 2856, descontos: 0, color: "#22C55E" },
+    { nome: "Anotai", receita: 28560, pedidos: 298, taxas: 2856, descontos: 0, color: "#2563EB" },
     { nome: "Próprio / WhatsApp", receita: 0, pedidos: 0, taxas: 0, descontos: 0, color: "#3B82F6" },
     { nome: "Salão", receita: 0, pedidos: 0, taxas: 0, descontos: 0, color: "#8B5CF6" },
   ],
