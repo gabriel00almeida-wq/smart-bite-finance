@@ -130,9 +130,9 @@ export function EditWeekSheet({ open, onOpenChange, initial, onSave, periodLabel
                         />
                         <span className="text-sm font-medium">{c.nome}</span>
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <Label className="text-xs text-slate-500">Receita</Label>
+                          <Label className="text-xs text-slate-500">Faturamento</Label>
                           <NumberField
                             prefix="R$"
                             value={c.receita}
@@ -161,15 +161,30 @@ export function EditWeekSheet({ open, onOpenChange, initial, onSave, periodLabel
                           />
                         </div>
                         <div>
-                          <Label className="text-xs text-slate-500">Taxa</Label>
+                          <Label className="text-xs text-slate-500">Taxas / comissão do app</Label>
                           <NumberField
-                            suffix="%"
-                            value={c.taxaPct}
+                            prefix="R$"
+                            value={c.taxas}
                             onChange={(v) =>
                               setData((d) => ({
                                 ...d,
                                 channels: d.channels.map((x, idx) =>
-                                  idx === i ? { ...x, taxaPct: v } : x,
+                                  idx === i ? { ...x, taxas: v } : x,
+                                ),
+                              }))
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Descontos concedidos</Label>
+                          <NumberField
+                            prefix="R$"
+                            value={c.descontos}
+                            onChange={(v) =>
+                              setData((d) => ({
+                                ...d,
+                                channels: d.channels.map((x, idx) =>
+                                  idx === i ? { ...x, descontos: v } : x,
                                 ),
                               }))
                             }
