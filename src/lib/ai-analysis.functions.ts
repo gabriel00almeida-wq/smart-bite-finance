@@ -52,6 +52,11 @@ Analise a DRE abaixo do período ${data.periodo} e retorne um parecer em portugu
 
 Seja incisivo, direto, use números. Nada de generalidades.
 
+REGRAS RÍGIDAS SOBRE NÚMEROS (não quebre nunca):
+- Use SOMENTE os valores presentes no JSON abaixo. NÃO invente, NÃO estime, NÃO aplique percentuais "de mercado" (ex.: "taxa de cartão em torno de 2,5%", "iFood cobra ~27%", "CMV típico de 30%"). Se um valor não está no JSON, trate como ZERO e liste como "dado faltando" na seção 5.
+- NÃO calcule taxas, comissões, CMV ou qualquer custo multiplicando o faturamento por um percentual sugerido por você. Só cite valores em R$ que já vieram no JSON.
+- Percentuais só podem aparecer se forem derivados por divisão entre dois números que estão no JSON (ex.: cmv / receita). Nunca cite um percentual "estimado".
+
 DADOS:
 ${JSON.stringify(data.dre, null, 2)}`;
 
