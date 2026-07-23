@@ -20,7 +20,7 @@ import {
   type WeekPatch,
 } from "@/lib/dre-store";
 
-type Msg = { role: "user" | "assistant"; content: string; patchApplied?: boolean };
+type Msg = { role: "user" | "assistant"; content: string; images?: string[]; patchApplied?: boolean };
 
 type Props = {
   open: boolean;
