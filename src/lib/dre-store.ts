@@ -105,6 +105,63 @@ export function saveWeek(key: string, data: WeekData) {
   localStorage.setItem(key, JSON.stringify(data));
 }
 
+export type WeekPatch = {
+  channels?: Array<{ nome: string; receita?: number; pedidos?: number; taxaPct?: number }>;
+  embalagens?: number;
+  freteEntregador?: number;
+  cmv?: number;
+  taxaPagamentoPct?: number;
+  fixos?: LineItem[];
+  marketing?: LineItem[];
+};
+
+export function applyPatch(w: WeekData, patch: WeekPatch): WeekData {
+  const next: WeekData = {
+    ...w,
+    channels: w.channels.map((c) => ({ ...c })),
+    fixos: w.fixos.map((f) => ({ ...f })),
+    marketing: w.marketing.map((f) => ({ ...f })),
+  };
+  if (patch.channels) {
+    for (const p of patch.channels) {
+      const idx = next.channels.findIndex(
+        (c) => c.nome.toLowerCase() === p.nome.toLowerCase(),
+      );
+      if (idx >= 0) {
+        next.channels[idx] = {
+          ...next.channels[idx],
+          ...(p.receita !== undefined ? { receita: p.receita } : {}),
+          ...(p.pedidos !== undefined ? { pedidos: p.pedidos } : {}),
+          ...(p.taxaPct !== undefined ? { taxaPct: p.taxaPct } : {}),
+        };
+      }
+    }
+  }
+  if (patch.embalagens !== undefined) next.embalagens = patch.embalagens;
+  if (patch.freteEntregador !== undefined) next.freteEntregador = patch.freteEntregador;
+  if (patch.cmv !== undefined) next.cmv = patch.cmv;
+  if (patch.taxaPagamentoPct !== undefined) next.taxaPagamentoPct = patch.taxaPagamentoPct;
+  if (patch.fixos) {
+    for (const item of patch.fixos) {
+      const idx = next.fixos.findIndex(
+        (f) => f.label.toLowerCase() === item.label.toLowerCase(),
+      );
+      if (idx >= 0) next.fixos[idx] = { ...next.fixos[idx], valor: item.valor };
+      else next.fixos.push({ label: item.label, valor: item.valor });
+    }
+  }
+  if (patch.marketing) {
+    for (const item of patch.marketing) {
+      const idx = next.marketing.findIndex(
+        (f) => f.label.toLowerCase() === item.label.toLowerCase(),
+      );
+      if (idx >= 0) next.marketing[idx] = { ...next.marketing[idx], valor: item.valor };
+      else next.marketing.push({ label: item.label, valor: item.valor });
+    }
+  }
+  return next;
+}
+
 export type DreComputed = {
   receitaBruta: number;
   totalPedidos: number;

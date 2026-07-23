@@ -59,8 +59,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useServerFn } from "@tanstack/react-start";
-import { analyzeDre } from "@/lib/ai-analysis.functions";
 import logoAsset from "@/assets/itadaki-logo.png.asset.json";
 import {
   computeDre,
@@ -71,6 +69,7 @@ import {
   type WeekData,
 } from "@/lib/dre-store";
 import { EditWeekSheet } from "@/components/EditWeekSheet";
+import { AiChatSheet } from "@/components/AiChatSheet";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -239,18 +238,12 @@ function Dashboard() {
   const [week, setWeek] = useState<WeekData>(EMPTY_WEEK);
   const [editOpen, setEditOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiContent, setAiContent] = useState<string>("");
-  const [aiError, setAiError] = useState<string>("");
-  const analyze = useServerFn(analyzeDre);
 
   const key = weekKey(range?.from);
 
   // Load stored data whenever the week changes
   useEffect(() => {
     setWeek(loadWeek(key));
-    setAiContent("");
-    setAiError("");
   }, [key]);
 
   const dre = useMemo(() => computeDre(week), [week]);
@@ -265,41 +258,11 @@ function Dashboard() {
   function handleSave(data: WeekData) {
     saveWeek(key, data);
     setWeek(data);
-    setAiContent(""); // invalidate previous analysis
   }
 
-  async function runAi() {
-    if (!hasData) {
-      setAiOpen(true);
-      setAiError("Preencha a apuração da semana antes de pedir análise da IA.");
-      return;
-    }
-    setAiOpen(true);
-    if (aiContent || aiLoading) return;
-    setAiLoading(true);
-    setAiError("");
-    try {
-      const res = await analyze({
-        data: {
-          periodo: rangeLabel,
-          dre: {
-            receitaBruta: dre.receitaBruta,
-            custosVariaveis: dre.custosVariaveis,
-            custosFixos: dre.fixosTotal + dre.marketingTotal,
-            lucroLiquido: dre.lucroLiquido,
-            margemContribuicao: +dre.margemContribuicaoPct.toFixed(2),
-            cmv: +dre.cmvPct.toFixed(2),
-            ticketMedio: +dre.ticketMedio.toFixed(2),
-            canais: dre.canais.map((c) => ({ nome: c.nome, percentual: c.percentual })),
-          },
-        },
-      });
-      setAiContent(res.content);
-    } catch (e) {
-      setAiError(e instanceof Error ? e.message : "Erro ao consultar a IA");
-    } finally {
-      setAiLoading(false);
-    }
+  function handleWeekChangeFromChat(data: WeekData) {
+    saveWeek(key, data);
+    setWeek(data);
   }
 
   const revenueChart = [
@@ -394,7 +357,7 @@ function Dashboard() {
               variant="outline"
               size="icon"
               className="h-9 w-9 bg-white dark:bg-slate-900"
-              onClick={runAi}
+              onClick={() => setAiOpen(true)}
               title="Análise IA — CEO QI 200"
             >
               <Brain className="h-4 w-4 text-indigo-500" />
@@ -724,53 +687,14 @@ function Dashboard() {
         periodLabel={rangeLabel}
       />
 
-      {/* AI Analysis Sheet */}
-      <Sheet open={aiOpen} onOpenChange={setAiOpen}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
-                <Brain className="h-4 w-4" />
-              </div>
-              CEO IA · QI 200
-            </SheetTitle>
-            <SheetDescription>
-              Análise da DRE de {rangeLabel} — lacunas, alertas e ações prioritárias.
-            </SheetDescription>
-          </SheetHeader>
-
-          <div className="mt-6 px-4 pb-8">
-            {aiLoading && (
-              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Analisando sua DRE...
-              </div>
-            )}
-            {aiError && (
-              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
-                {aiError}
-              </div>
-            )}
-            {aiContent && (
-              <article className="prose prose-sm max-w-none prose-headings:text-slate-900 prose-p:text-slate-700 prose-strong:text-slate-900 dark:prose-invert dark:prose-headings:text-white dark:prose-p:text-slate-300 dark:prose-strong:text-white">
-                <ReactMarkdown>{aiContent}</ReactMarkdown>
-              </article>
-            )}
-            {aiContent && (
-              <Button
-                variant="outline"
-                className="mt-6 w-full"
-                onClick={() => {
-                  setAiContent("");
-                  runAi();
-                }}
-              >
-                Reanalisar
-              </Button>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* AI Chat Sheet — Cérebro */}
+      <AiChatSheet
+        open={aiOpen}
+        onOpenChange={setAiOpen}
+        week={week}
+        onWeekChange={handleWeekChangeFromChat}
+        periodLabel={rangeLabel}
+      />
     </div>
   );
 }
