@@ -226,8 +226,13 @@ export type DreComputed = {
 
 export function computeDre(w: WeekData): DreComputed {
   const receitaBruta = w.channels.reduce((s, c) => s + (c.receita || 0), 0);
-  const totalPedidos = w.channels.reduce((s, c) => s + (c.pedidos || 0), 0);
+  const somaPedidosCanais = w.channels.reduce((s, c) => s + (c.pedidos || 0), 0);
+  const totalPedidos =
+    w.totalPedidosOverride && w.totalPedidosOverride > 0
+      ? w.totalPedidosOverride
+      : somaPedidosCanais;
   const ticketMedio = totalPedidos > 0 ? receitaBruta / totalPedidos : 0;
+
   const taxasMarketplace = w.channels.reduce((s, c) => s + (c.taxas || 0), 0);
   const descontosTotal = w.channels.reduce((s, c) => s + (c.descontos || 0), 0);
   const taxasPagamento = w.taxaPagamento || 0;
