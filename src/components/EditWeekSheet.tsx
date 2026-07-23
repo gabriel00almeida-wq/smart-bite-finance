@@ -101,6 +101,22 @@ export function EditWeekSheet({ open, onOpenChange, initial, onSave, periodLabel
     }));
   }
 
+  function updatePromo(i: number, patch: Partial<LineItem>) {
+    setData((d) => ({
+      ...d,
+      promocoes: d.promocoes.map((f, idx) => (idx === i ? { ...f, ...patch } : f)),
+    }));
+  }
+  function removePromo(i: number) {
+    setData((d) => ({ ...d, promocoes: d.promocoes.filter((_, idx) => idx !== i) }));
+  }
+  function addPromo() {
+    setData((d) => ({
+      ...d,
+      promocoes: [...d.promocoes, { label: "Nova promoção", valor: 0 }],
+    }));
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex w-full flex-col overflow-y-auto p-0 sm:max-w-xl">
@@ -113,7 +129,7 @@ export function EditWeekSheet({ open, onOpenChange, initial, onSave, periodLabel
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          <Accordion type="multiple" defaultValue={["receitas", "variaveis", "cmv", "fixos", "mkt"]}>
+          <Accordion type="multiple" defaultValue={["receitas", "variaveis", "cmv", "fixos", "mkt", "promo"]}>
             <AccordionItem value="receitas">
               <AccordionTrigger>Receitas por canal</AccordionTrigger>
               <AccordionContent>
@@ -130,9 +146,9 @@ export function EditWeekSheet({ open, onOpenChange, initial, onSave, periodLabel
                         />
                         <span className="text-sm font-medium">{c.nome}</span>
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <Label className="text-xs text-slate-500">Receita</Label>
+                          <Label className="text-xs text-slate-500">Faturamento</Label>
                           <NumberField
                             prefix="R$"
                             value={c.receita}
@@ -161,15 +177,30 @@ export function EditWeekSheet({ open, onOpenChange, initial, onSave, periodLabel
                           />
                         </div>
                         <div>
-                          <Label className="text-xs text-slate-500">Taxa</Label>
+                          <Label className="text-xs text-slate-500">Taxas / comissão do app</Label>
                           <NumberField
-                            suffix="%"
-                            value={c.taxaPct}
+                            prefix="R$"
+                            value={c.taxas}
                             onChange={(v) =>
                               setData((d) => ({
                                 ...d,
                                 channels: d.channels.map((x, idx) =>
-                                  idx === i ? { ...x, taxaPct: v } : x,
+                                  idx === i ? { ...x, taxas: v } : x,
+                                ),
+                              }))
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Descontos concedidos</Label>
+                          <NumberField
+                            prefix="R$"
+                            value={c.descontos}
+                            onChange={(v) =>
+                              setData((d) => ({
+                                ...d,
+                                channels: d.channels.map((x, idx) =>
+                                  idx === i ? { ...x, descontos: v } : x,
                                 ),
                               }))
                             }
@@ -187,11 +218,11 @@ export function EditWeekSheet({ open, onOpenChange, initial, onSave, periodLabel
               <AccordionContent>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <Label className="text-xs text-slate-500">Taxa de pagamento (cartão)</Label>
+                    <Label className="text-xs text-slate-500">Taxas de cartão / pagamento</Label>
                     <NumberField
-                      suffix="%"
-                      value={data.taxaPagamentoPct}
-                      onChange={(v) => setData((d) => ({ ...d, taxaPagamentoPct: v }))}
+                      prefix="R$"
+                      value={data.taxaPagamento}
+                      onChange={(v) => setData((d) => ({ ...d, taxaPagamento: v }))}
                     />
                   </div>
                   <div>
@@ -297,6 +328,45 @@ export function EditWeekSheet({ open, onOpenChange, initial, onSave, periodLabel
                     </div>
                   ))}
                   <Button variant="outline" size="sm" onClick={addMkt} className="w-full">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Adicionar linha
+                  </Button>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="promo">
+              <AccordionTrigger>Promoções e Incentivos</AccordionTrigger>
+              <AccordionContent>
+                <p className="mb-2 text-xs text-slate-500">
+                  Cupons, cashback, frete grátis bancado pela casa, brindes.
+                </p>
+                <div className="space-y-2">
+                  {data.promocoes.map((f, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Input
+                        value={f.label}
+                        onChange={(e) => updatePromo(i, { label: e.target.value })}
+                        className="h-9 flex-1"
+                      />
+                      <div className="w-32">
+                        <NumberField
+                          prefix="R$"
+                          value={f.valor}
+                          onChange={(v) => updatePromo(i, { valor: v })}
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-slate-400 hover:text-red-500"
+                        onClick={() => removePromo(i)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button variant="outline" size="sm" onClick={addPromo} className="w-full">
                     <Plus className="mr-2 h-4 w-4" />
                     Adicionar linha
                   </Button>
