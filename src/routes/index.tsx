@@ -578,6 +578,34 @@ function Dashboard() {
                   ))}
                 {dre.promocoesTotal === 0 && <SubRow label="—" value={currency(0)} />}
               </DreRow>
+              <DreRow
+                label={`Imposto — Simples Nacional${dre.impostoPago ? " (pago)" : " (provisão)"}`}
+                value={
+                  dre.impostoPago
+                    ? `- ${currency(dre.impostoDeduzido)}`
+                    : `provisão · ${currency(dre.impostoProvisao)}`
+                }
+              >
+                <SubRow
+                  label={`Alíquota aplicada`}
+                  value={`${dre.simplesAliquota.toFixed(2)}% sobre ${currency(dre.receitaBruta)}`}
+                />
+                <SubRow label="Provisão do período" value={currency(dre.impostoProvisao)} />
+                {dre.impostoPago ? (
+                  <SubRow label="Valor pago (abatido)" value={`- ${currency(dre.impostoDeduzido)}`} />
+                ) : (
+                  <SubRow
+                    label="Status"
+                    value="Aguardando comprovante — não abatido no lucro"
+                  />
+                )}
+                {!dre.impostoPago && dre.impostoProvisao > 0 && (
+                  <SubRow
+                    label="Lucro líquido projetado (com imposto pago)"
+                    value={currency(dre.lucroLiquidoProjetado)}
+                  />
+                )}
+              </DreRow>
               <DreRow label="Lucro Líquido" value={currency(dre.lucroLiquido)} highlight />
             </Accordion>
           </section>
