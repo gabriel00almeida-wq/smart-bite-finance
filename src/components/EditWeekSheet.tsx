@@ -202,11 +202,11 @@ export function EditWeekSheet({ open, onOpenChange, initial, onSave, periodLabel
               <AccordionContent>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <Label className="text-xs text-slate-500">Taxa de pagamento (cartão)</Label>
+                    <Label className="text-xs text-slate-500">Taxas de cartão / pagamento</Label>
                     <NumberField
-                      suffix="%"
-                      value={data.taxaPagamentoPct}
-                      onChange={(v) => setData((d) => ({ ...d, taxaPagamentoPct: v }))}
+                      prefix="R$"
+                      value={data.taxaPagamento}
+                      onChange={(v) => setData((d) => ({ ...d, taxaPagamento: v }))}
                     />
                   </div>
                   <div>
