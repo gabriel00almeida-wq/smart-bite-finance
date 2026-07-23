@@ -238,18 +238,12 @@ function Dashboard() {
   const [week, setWeek] = useState<WeekData>(EMPTY_WEEK);
   const [editOpen, setEditOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiContent, setAiContent] = useState<string>("");
-  const [aiError, setAiError] = useState<string>("");
-  const analyze = useServerFn(analyzeDre);
 
   const key = weekKey(range?.from);
 
   // Load stored data whenever the week changes
   useEffect(() => {
     setWeek(loadWeek(key));
-    setAiContent("");
-    setAiError("");
   }, [key]);
 
   const dre = useMemo(() => computeDre(week), [week]);
@@ -264,41 +258,11 @@ function Dashboard() {
   function handleSave(data: WeekData) {
     saveWeek(key, data);
     setWeek(data);
-    setAiContent(""); // invalidate previous analysis
   }
 
-  async function runAi() {
-    if (!hasData) {
-      setAiOpen(true);
-      setAiError("Preencha a apuração da semana antes de pedir análise da IA.");
-      return;
-    }
-    setAiOpen(true);
-    if (aiContent || aiLoading) return;
-    setAiLoading(true);
-    setAiError("");
-    try {
-      const res = await analyze({
-        data: {
-          periodo: rangeLabel,
-          dre: {
-            receitaBruta: dre.receitaBruta,
-            custosVariaveis: dre.custosVariaveis,
-            custosFixos: dre.fixosTotal + dre.marketingTotal,
-            lucroLiquido: dre.lucroLiquido,
-            margemContribuicao: +dre.margemContribuicaoPct.toFixed(2),
-            cmv: +dre.cmvPct.toFixed(2),
-            ticketMedio: +dre.ticketMedio.toFixed(2),
-            canais: dre.canais.map((c) => ({ nome: c.nome, percentual: c.percentual })),
-          },
-        },
-      });
-      setAiContent(res.content);
-    } catch (e) {
-      setAiError(e instanceof Error ? e.message : "Erro ao consultar a IA");
-    } finally {
-      setAiLoading(false);
-    }
+  function handleWeekChangeFromChat(data: WeekData) {
+    saveWeek(key, data);
+    setWeek(data);
   }
 
   const revenueChart = [
