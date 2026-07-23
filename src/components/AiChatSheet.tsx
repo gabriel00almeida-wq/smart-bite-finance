@@ -305,6 +305,26 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
               </Button>
             )}
           </div>
+          {pendingImages.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {pendingImages.map((src, idx) => (
+                <div key={idx} className="relative">
+                  <img
+                    src={src}
+                    alt=""
+                    className="h-16 w-16 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPendingImages((p) => p.filter((_, i) => i !== idx))}
+                    className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-slate-900 text-white shadow hover:bg-slate-700"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -312,6 +332,28 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
             }}
             className="flex items-end gap-2"
           >
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                handleFiles(e.target.files);
+                if (fileRef.current) fileRef.current.value = "";
+              }}
+            />
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              onClick={() => fileRef.current?.click()}
+              disabled={loading || pendingImages.length >= 4}
+              className="h-11 w-11 shrink-0"
+              title="Anexar imagem"
+            >
+              <ImagePlus className="h-4 w-4" />
+            </Button>
             <Textarea
               ref={inputRef}
               value={input}
@@ -322,14 +364,14 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
                   send(input);
                 }
               }}
-              placeholder="Ex: vendi 8500 no iFood com 90 pedidos..."
+              placeholder="Ex: vendi 8500 no iFood com 90 pedidos... ou anexe um print"
               rows={2}
               className="min-h-[44px] resize-none"
             />
             <Button
               type="submit"
               size="icon"
-              disabled={loading || !input.trim()}
+              disabled={loading || (!input.trim() && pendingImages.length === 0)}
               className="h-11 w-11 shrink-0 bg-indigo-600 hover:bg-indigo-700"
             >
               <Send className="h-4 w-4" />
@@ -340,3 +382,4 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
     </Sheet>
   );
 }
+
