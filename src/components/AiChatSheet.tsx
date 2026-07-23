@@ -57,18 +57,55 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
 
+  async function handleFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const arr = Array.from(files).slice(0, 4);
+    const dataUrls = await Promise.all(
+      arr.map(
+        (f) =>
+          new Promise<string>((resolve, reject) => {
+            if (!f.type.startsWith("image/")) {
+              reject(new Error("Apenas imagens são suportadas."));
+              return;
+            }
+            if (f.size > 8 * 1024 * 1024) {
+              reject(new Error(`"${f.name}" passa de 8MB.`));
+              return;
+            }
+            const r = new FileReader();
+            r.onload = () => resolve(String(r.result));
+            r.onerror = () => reject(r.error);
+            r.readAsDataURL(f);
+          }),
+      ),
+    ).catch((e) => {
+      setError(e instanceof Error ? e.message : "Erro ao ler imagem");
+      return [] as string[];
+    });
+    if (dataUrls.length) setPendingImages((p) => [...p, ...dataUrls].slice(0, 4));
+  }
+
   async function send(text: string) {
     const clean = text.trim();
-    if (!clean || loading) return;
+    const images = pendingImages;
+    if ((!clean && images.length === 0) || loading) return;
     setError("");
-    const next: Msg[] = [...messages, { role: "user", content: clean }];
+    const next: Msg[] = [
+      ...messages,
+      { role: "user", content: clean, images: images.length ? images : undefined },
+    ];
     setMessages(next);
     setInput("");
+    setPendingImages([]);
     setLoading(true);
     try {
       const res = await chat({
         data: {
-          messages: next.map((m) => ({ role: m.role, content: m.content })),
+          messages: next.map((m) => ({
+            role: m.role,
+            content: m.content,
+            ...(m.images && m.images.length ? { images: m.images } : {}),
+          })),
           currentWeek: week,
           periodo: periodLabel,
         },
@@ -104,6 +141,7 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
       setTimeout(() => inputRef.current?.focus(), 30);
     }
   }
+
 
   async function runFullAnalysis() {
     const dre = computeDre(week);
