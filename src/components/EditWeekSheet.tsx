@@ -65,6 +65,42 @@ function NumberField({
   );
 }
 
+function ComprovanteUpload({ onFile }: { onFile: (dataUrl: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="mt-2">
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          if (file.size > 8 * 1024 * 1024) return;
+          const reader = new FileReader();
+          reader.onload = () => onFile(String(reader.result));
+          reader.readAsDataURL(file);
+        }}
+      />
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="w-full"
+        onClick={() => inputRef.current?.click()}
+      >
+        <Upload className="mr-2 h-4 w-4" />
+        Anexar comprovante (imagem/PDF)
+      </Button>
+      <p className="mt-1 text-[11px] text-slate-400">
+        Só o anexo do comprovante confirma o pagamento — sem ele a DRE mantém o imposto como
+        provisão.
+      </p>
+    </div>
+  );
+}
+
 export function EditWeekSheet({ open, onOpenChange, initial, onSave, periodLabel }: Props) {
   const [data, setData] = useState<WeekData>(initial);
 
