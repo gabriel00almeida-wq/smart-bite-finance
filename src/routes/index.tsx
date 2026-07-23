@@ -546,8 +546,9 @@ function Dashboard() {
                 <SubRow label="CMV (Insumos)" value={`- ${currency(dre.cmv)}`} />
                 <SubRow label="Embalagens" value={`- ${currency(dre.embalagens)}`} />
                 <SubRow label="Frete / entregador" value={`- ${currency(dre.freteEntregador)}`} />
-                <SubRow label="Taxas marketplace" value={`- ${currency(dre.taxasMarketplace)}`} />
-                <SubRow label="Taxas de pagamento" value={`- ${currency(dre.taxasPagamento)}`} />
+                <SubRow label="Taxas / comissões dos apps" value={`- ${currency(dre.taxasMarketplace)}`} />
+                <SubRow label="Descontos concedidos" value={`- ${currency(dre.descontosTotal)}`} />
+                <SubRow label="Taxas de cartão / pagamento" value={`- ${currency(dre.taxasPagamento)}`} />
               </DreRow>
               <DreRow
                 label="Margem de Contribuição"
@@ -568,6 +569,14 @@ function Dashboard() {
                     <SubRow key={i} label={f.label} value={`- ${currency(f.valor)}`} />
                   ))}
                 {dre.marketingTotal === 0 && <SubRow label="—" value={currency(0)} />}
+              </DreRow>
+              <DreRow label="Promoções e Incentivos" value={`- ${currency(dre.promocoesTotal)}`}>
+                {week.promocoes
+                  .filter((f) => f.valor > 0)
+                  .map((f, i) => (
+                    <SubRow key={i} label={f.label} value={`- ${currency(f.valor)}`} />
+                  ))}
+                {dre.promocoesTotal === 0 && <SubRow label="—" value={currency(0)} />}
               </DreRow>
               <DreRow label="Lucro Líquido" value={currency(dre.lucroLiquido)} highlight />
             </Accordion>
