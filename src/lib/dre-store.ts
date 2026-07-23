@@ -219,11 +219,41 @@ export function applyPatch(w: WeekData, patch: WeekPatch): WeekData {
   if (patch.fixos) next.fixos = mergeLineItems(next.fixos, patch.fixos);
   if (patch.marketing) next.marketing = mergeLineItems(next.marketing, patch.marketing);
   if (patch.promocoes) next.promocoes = mergeLineItems(next.promocoes, patch.promocoes);
+  if (patch.simplesAliquota !== undefined) next.simplesAliquota = patch.simplesAliquota;
+  if (patch.impostoPago !== undefined) next.impostoPago = patch.impostoPago;
+  if (patch.impostoPagoValor !== undefined) next.impostoPagoValor = patch.impostoPagoValor;
+  if (patch.impostoComprovanteUrl !== undefined)
+    next.impostoComprovanteUrl = patch.impostoComprovanteUrl;
+  if (patch.impostoPagoEm !== undefined) next.impostoPagoEm = patch.impostoPagoEm;
   return next;
 }
 
 export type DreComputed = {
   receitaBruta: number;
+  totalPedidos: number;
+  ticketMedio: number;
+  taxasMarketplace: number;
+  taxasPagamento: number;
+  descontosTotal: number;
+  embalagens: number;
+  freteEntregador: number;
+  cmv: number;
+  cmvPct: number;
+  custosVariaveis: number;
+  margemContribuicaoValor: number;
+  margemContribuicaoPct: number;
+  fixosTotal: number;
+  marketingTotal: number;
+  promocoesTotal: number;
+  simplesAliquota: number;
+  impostoProvisao: number;
+  impostoDeduzido: number;
+  impostoPago: boolean;
+  lucroLiquido: number;
+  lucroLiquidoProjetado: number; // se o imposto fosse pago
+  lucroPct: number;
+  canais: { nome: string; receita: number; percentual: number; color: string }[];
+};
   totalPedidos: number;
   ticketMedio: number;
   taxasMarketplace: number;
