@@ -389,6 +389,108 @@ export function EditWeekSheet({ open, onOpenChange, initial, onSave, periodLabel
                 </div>
               </AccordionContent>
             </AccordionItem>
+
+            <AccordionItem value="imposto">
+              <AccordionTrigger>Imposto (Simples Nacional)</AccordionTrigger>
+              <AccordionContent>
+                <p className="mb-3 text-xs text-slate-500">
+                  A provisão é calculada sobre o faturamento, mas <strong>só entra no lucro
+                  líquido quando você confirmar o pagamento</strong> anexando o comprovante
+                  (aqui ou no chat do Cérebro).
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label className="text-xs text-slate-500">Alíquota do Simples (%)</Label>
+                    <NumberField
+                      suffix="%"
+                      value={data.simplesAliquota}
+                      onChange={(v) => setData((d) => ({ ...d, simplesAliquota: v }))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">
+                      Valor efetivamente pago (opcional)
+                    </Label>
+                    <NumberField
+                      prefix="R$"
+                      value={data.impostoPagoValor ?? 0}
+                      onChange={(v) =>
+                        setData((d) => ({ ...d, impostoPagoValor: v || undefined }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+                  <div>
+                    <div className="text-sm font-medium">Imposto pago?</div>
+                    <div className="text-xs text-slate-500">
+                      {data.impostoPago
+                        ? "Marcado como pago — abate no lucro líquido."
+                        : "Pendente — a DRE mostra apenas como provisão."}
+                    </div>
+                  </div>
+                  <Button
+                    variant={data.impostoPago ? "outline" : "default"}
+                    size="sm"
+                    onClick={() =>
+                      setData((d) => ({
+                        ...d,
+                        impostoPago: !d.impostoPago,
+                        impostoPagoEm: !d.impostoPago ? new Date().toISOString() : undefined,
+                      }))
+                    }
+                  >
+                    {data.impostoPago ? "Desmarcar" : "Marcar pago"}
+                  </Button>
+                </div>
+
+                <div className="mt-3">
+                  <Label className="text-xs text-slate-500">Comprovante de pagamento</Label>
+                  {data.impostoComprovanteUrl ? (
+                    <div className="mt-2 flex items-center gap-3 rounded-lg border border-slate-200 p-2 dark:border-slate-800">
+                      {data.impostoComprovanteUrl.startsWith("data:image") ? (
+                        <img
+                          src={data.impostoComprovanteUrl}
+                          alt="Comprovante"
+                          className="h-16 w-16 rounded object-cover"
+                        />
+                      ) : (
+                        <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                      )}
+                      <div className="flex-1 text-xs text-slate-500">
+                        Comprovante anexado
+                        {data.impostoPagoEm
+                          ? ` em ${new Date(data.impostoPagoEm).toLocaleDateString("pt-BR")}`
+                          : ""}
+                        .
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-slate-400 hover:text-red-500"
+                        onClick={() =>
+                          setData((d) => ({ ...d, impostoComprovanteUrl: undefined }))
+                        }
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <ComprovanteUpload
+                      onFile={(url) =>
+                        setData((d) => ({
+                          ...d,
+                          impostoComprovanteUrl: url,
+                          impostoPago: true,
+                          impostoPagoEm: d.impostoPagoEm ?? new Date().toISOString(),
+                        }))
+                      }
+                    />
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
           </Accordion>
 
           <Button
