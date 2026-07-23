@@ -21,6 +21,12 @@ export type WeekData = {
   marketing: LineItem[];
   promocoes: LineItem[];
   totalPedidosOverride?: number; // se > 0, usa este total ao invés da soma por canal
+  // Simples Nacional — provisão sobre a receita, só abate no lucro quando o pagamento for confirmado
+  simplesAliquota: number; // % (ex.: 6)
+  impostoPago: boolean;
+  impostoPagoValor?: number; // R$ efetivamente pago (default = provisão)
+  impostoComprovanteUrl?: string; // data URL do comprovante enviado no chat
+  impostoPagoEm?: string; // ISO date
 };
 
 
@@ -55,6 +61,8 @@ export const EMPTY_WEEK: WeekData = {
     { label: "Cupom / Frete grátis", valor: 0 },
     { label: "Cashback / Fidelidade", valor: 0 },
   ],
+  simplesAliquota: 6,
+  impostoPago: false,
 };
 
 export const SAMPLE_WEEK: WeekData = {
@@ -86,6 +94,8 @@ export const SAMPLE_WEEK: WeekData = {
     { label: "Cupom / Frete grátis", valor: 600 },
     { label: "Cashback / Fidelidade", valor: 0 },
   ],
+  simplesAliquota: 6,
+  impostoPago: false,
 };
 
 export function weekKey(from?: Date): string {
@@ -157,6 +167,11 @@ export type WeekPatch = {
   fixos?: LineItem[];
   marketing?: LineItem[];
   promocoes?: LineItem[];
+  simplesAliquota?: number;
+  impostoPago?: boolean;
+  impostoPagoValor?: number;
+  impostoComprovanteUrl?: string;
+  impostoPagoEm?: string;
 };
 
 
@@ -204,6 +219,12 @@ export function applyPatch(w: WeekData, patch: WeekPatch): WeekData {
   if (patch.fixos) next.fixos = mergeLineItems(next.fixos, patch.fixos);
   if (patch.marketing) next.marketing = mergeLineItems(next.marketing, patch.marketing);
   if (patch.promocoes) next.promocoes = mergeLineItems(next.promocoes, patch.promocoes);
+  if (patch.simplesAliquota !== undefined) next.simplesAliquota = patch.simplesAliquota;
+  if (patch.impostoPago !== undefined) next.impostoPago = patch.impostoPago;
+  if (patch.impostoPagoValor !== undefined) next.impostoPagoValor = patch.impostoPagoValor;
+  if (patch.impostoComprovanteUrl !== undefined)
+    next.impostoComprovanteUrl = patch.impostoComprovanteUrl;
+  if (patch.impostoPagoEm !== undefined) next.impostoPagoEm = patch.impostoPagoEm;
   return next;
 }
 
@@ -224,7 +245,12 @@ export type DreComputed = {
   fixosTotal: number;
   marketingTotal: number;
   promocoesTotal: number;
+  simplesAliquota: number;
+  impostoProvisao: number;
+  impostoDeduzido: number;
+  impostoPago: boolean;
   lucroLiquido: number;
+  lucroLiquidoProjetado: number; // se o imposto fosse pago
   lucroPct: number;
   canais: { nome: string; receita: number; percentual: number; color: string }[];
 };
@@ -255,7 +281,17 @@ export function computeDre(w: WeekData): DreComputed {
   const fixosTotal = w.fixos.reduce((s, f) => s + (f.valor || 0), 0);
   const marketingTotal = w.marketing.reduce((s, m) => s + (m.valor || 0), 0);
   const promocoesTotal = w.promocoes.reduce((s, m) => s + (m.valor || 0), 0);
-  const lucroLiquido = margemContribuicaoValor - fixosTotal - marketingTotal - promocoesTotal;
+  const lucroAntesImposto =
+    margemContribuicaoValor - fixosTotal - marketingTotal - promocoesTotal;
+  const simplesAliquota = w.simplesAliquota || 0;
+  const impostoProvisao = (receitaBruta * simplesAliquota) / 100;
+  const impostoDeduzido = w.impostoPago
+    ? w.impostoPagoValor && w.impostoPagoValor > 0
+      ? w.impostoPagoValor
+      : impostoProvisao
+    : 0;
+  const lucroLiquido = lucroAntesImposto - impostoDeduzido;
+  const lucroLiquidoProjetado = lucroAntesImposto - impostoProvisao;
   const lucroPct = receitaBruta > 0 ? (lucroLiquido / receitaBruta) * 100 : 0;
   const canais = w.channels
     .filter((c) => (c.receita || 0) > 0)
@@ -283,7 +319,12 @@ export function computeDre(w: WeekData): DreComputed {
     fixosTotal,
     marketingTotal,
     promocoesTotal,
+    simplesAliquota,
+    impostoProvisao,
+    impostoDeduzido,
+    impostoPago: !!w.impostoPago,
     lucroLiquido,
+    lucroLiquidoProjetado,
     lucroPct,
     canais,
   };

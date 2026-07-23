@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Plus, Trash2, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Trash2, Sparkles, Upload, CheckCircle2, X } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -61,6 +61,42 @@ function NumberField({
           {suffix}
         </span>
       )}
+    </div>
+  );
+}
+
+function ComprovanteUpload({ onFile }: { onFile: (dataUrl: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="mt-2">
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          if (file.size > 8 * 1024 * 1024) return;
+          const reader = new FileReader();
+          reader.onload = () => onFile(String(reader.result));
+          reader.readAsDataURL(file);
+        }}
+      />
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="w-full"
+        onClick={() => inputRef.current?.click()}
+      >
+        <Upload className="mr-2 h-4 w-4" />
+        Anexar comprovante (imagem/PDF)
+      </Button>
+      <p className="mt-1 text-[11px] text-slate-400">
+        Só o anexo do comprovante confirma o pagamento — sem ele a DRE mantém o imposto como
+        provisão.
+      </p>
     </div>
   );
 }
@@ -386,6 +422,108 @@ export function EditWeekSheet({ open, onOpenChange, initial, onSave, periodLabel
                     <Plus className="mr-2 h-4 w-4" />
                     Adicionar linha
                   </Button>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="imposto">
+              <AccordionTrigger>Imposto (Simples Nacional)</AccordionTrigger>
+              <AccordionContent>
+                <p className="mb-3 text-xs text-slate-500">
+                  A provisão é calculada sobre o faturamento, mas <strong>só entra no lucro
+                  líquido quando você confirmar o pagamento</strong> anexando o comprovante
+                  (aqui ou no chat do Cérebro).
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label className="text-xs text-slate-500">Alíquota do Simples (%)</Label>
+                    <NumberField
+                      suffix="%"
+                      value={data.simplesAliquota}
+                      onChange={(v) => setData((d) => ({ ...d, simplesAliquota: v }))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500">
+                      Valor efetivamente pago (opcional)
+                    </Label>
+                    <NumberField
+                      prefix="R$"
+                      value={data.impostoPagoValor ?? 0}
+                      onChange={(v) =>
+                        setData((d) => ({ ...d, impostoPagoValor: v || undefined }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+                  <div>
+                    <div className="text-sm font-medium">Imposto pago?</div>
+                    <div className="text-xs text-slate-500">
+                      {data.impostoPago
+                        ? "Marcado como pago — abate no lucro líquido."
+                        : "Pendente — a DRE mostra apenas como provisão."}
+                    </div>
+                  </div>
+                  <Button
+                    variant={data.impostoPago ? "outline" : "default"}
+                    size="sm"
+                    onClick={() =>
+                      setData((d) => ({
+                        ...d,
+                        impostoPago: !d.impostoPago,
+                        impostoPagoEm: !d.impostoPago ? new Date().toISOString() : undefined,
+                      }))
+                    }
+                  >
+                    {data.impostoPago ? "Desmarcar" : "Marcar pago"}
+                  </Button>
+                </div>
+
+                <div className="mt-3">
+                  <Label className="text-xs text-slate-500">Comprovante de pagamento</Label>
+                  {data.impostoComprovanteUrl ? (
+                    <div className="mt-2 flex items-center gap-3 rounded-lg border border-slate-200 p-2 dark:border-slate-800">
+                      {data.impostoComprovanteUrl.startsWith("data:image") ? (
+                        <img
+                          src={data.impostoComprovanteUrl}
+                          alt="Comprovante"
+                          className="h-16 w-16 rounded object-cover"
+                        />
+                      ) : (
+                        <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                      )}
+                      <div className="flex-1 text-xs text-slate-500">
+                        Comprovante anexado
+                        {data.impostoPagoEm
+                          ? ` em ${new Date(data.impostoPagoEm).toLocaleDateString("pt-BR")}`
+                          : ""}
+                        .
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-slate-400 hover:text-red-500"
+                        onClick={() =>
+                          setData((d) => ({ ...d, impostoComprovanteUrl: undefined }))
+                        }
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <ComprovanteUpload
+                      onFile={(url) =>
+                        setData((d) => ({
+                          ...d,
+                          impostoComprovanteUrl: url,
+                          impostoPago: true,
+                          impostoPagoEm: d.impostoPagoEm ?? new Date().toISOString(),
+                        }))
+                      }
+                    />
+                  )}
                 </div>
               </AccordionContent>
             </AccordionItem>

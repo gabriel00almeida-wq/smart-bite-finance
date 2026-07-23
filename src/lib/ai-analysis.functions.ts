@@ -95,7 +95,11 @@ IMPORTANTE — VALORES SEMPRE EM REAIS (R$), NUNCA CALCULE PERCENTUAIS NEM ESTIM
 - O usuário informa DIRETAMENTE o faturamento, taxas do app, descontos, taxa de cartão, etc. em R$.
 - NÃO estime taxas, comissões, taxa de cartão/pagamento ou qualquer custo aplicando percentuais "de mercado" (ex.: 2,5% de cartão, 27% do iFood). Só registre o R$ que ele disser textualmente ou que aparecer nas imagens.
 - Se ele não informou um valor, NÃO invente, NÃO preencha e NÃO inclua no patch. Peça o número no reply.
-- Se ele disser "iFood faturei 12500, o app cobrou 3200 de taxa e 500 de desconto", você registra receita=12500, taxas=3200, descontos=500.
+
+SIMPLES NACIONAL:
+- O usuário pode informar a alíquota do Simples (ex.: "meu Simples é 6%") → use "simplesAliquota".
+- O imposto NUNCA abate no lucro automaticamente. Só marque "impostoPago: true" se o usuário DISSER que pagou ("paguei o DAS", "pago", "comprovante em anexo") OU se ele anexar imagem/print do comprovante de pagamento (DAS, PIX, boleto pago).
+- Se o comprovante estiver anexado, marque "impostoPago: true" e, se conseguir ler o valor no comprovante, use "impostoPagoValor" em R$.
 
 Você DEVE responder SEMPRE em JSON puro, sem markdown, sem cercas, no formato:
 {
@@ -115,34 +119,29 @@ Você DEVE responder SEMPRE em JSON puro, sem markdown, sem cercas, no formato:
     "totalPedidosOverride"?: number,
     "fixos": [{ "label": string, "valor": number }],
     "marketing": [{ "label": string, "valor": number }],
-    "promocoes": [{ "label": string, "valor": number }]
+    "promocoes": [{ "label": string, "valor": number }],
+    "simplesAliquota"?: number,
+    "impostoPago"?: boolean,
+    "impostoPagoValor"?: number
   }
 }
 
-
 Regras do patch:
 - Só inclua CAMPOS que o usuário mencionou. Se não mencionou, OMITA (não use 0).
-- "channels", "fixos", "marketing" e "promocoes" são arrays de itens a fazer merge por nome/label. Só inclua os itens citados.
-- Valores em REAIS (number), sem "R$". NUNCA em percentual.
-- "promocoes" é para cupons, cashback, frete grátis bancado pela casa, brindes, incentivos.
-- "marketing" é para mídia paga (ads iFood, Meta, Google, influenciadores).
-- "fixos" é para custos fixos (aluguel, folha, energia, etc.).
-- Se o usuário só quer conversar (perguntou algo, pediu análise), devolva "patch": {}.
-- NUNCA invente dados. Só extraia o que foi dito.
-- Se o usuário enviar IMAGENS (prints de painel iFood/99Food, notas fiscais, planilhas, fotos de recibos), LEIA os números visíveis nelas e extraia para o patch da mesma forma. Cite no reply o que você conseguiu ler.
+- Valores em REAIS (number), sem "R$". NUNCA em percentual (exceto "simplesAliquota" que é %).
+- "promocoes" = cupons, cashback, frete grátis bancado pela casa, brindes.
+- "marketing" = mídia paga (ads iFood, Meta, Google, influenciadores).
+- "fixos" = custos fixos (aluguel, folha, energia, etc.).
+- Se o usuário só quer conversar, devolva "patch": {}.
+- NUNCA invente dados.
+- Se o usuário enviar IMAGENS (prints de painel, notas fiscais, comprovantes), LEIA os números visíveis e extraia. Se for comprovante de DAS/imposto, marque impostoPago: true.
 
 Exemplos:
-Usuário: "iFood: fatura 12500, 130 pedidos, taxa do app 3125, desconto 400"
-→ { "reply": "Anotado no iFood: faturamento R$ 12.500 (130 pedidos), taxa R$ 3.125, descontos R$ 400.", "patch": { "channels": [{"nome":"iFood","receita":12500,"pedidos":130,"taxas":3125,"descontos":400}] } }
+Usuário: "meu Simples é 6%"
+→ { "reply": "Alíquota do Simples registrada em 6%. Vou provisionar mas só abato no lucro quando você anexar o comprovante do DAS.", "patch": { "simplesAliquota": 6 } }
 
-Usuário: "gastei 600 em cupom e 300 em cashback"
-→ { "reply": "Registrei R$ 600 em cupom e R$ 300 em cashback nas promoções.", "patch": { "promocoes": [{"label":"Cupom","valor":600},{"label":"Cashback","valor":300}] } }
-
-Usuário: "aluguel 6500, taxa de cartão foi 320"
-→ { "reply": "Registrei aluguel R$ 6.500 e R$ 320 em taxa de cartão.", "patch": { "taxaPagamento": 320, "fixos": [{"label":"Aluguel","valor":6500}] } }
-
-Usuário: "como está minha margem?"
-→ { "reply": "Sua margem de contribuição está em X% ... [análise]", "patch": {} }`;
+Usuário (com print do DAS pago): "paguei o DAS, segue"
+→ { "reply": "Comprovante do DAS recebido — R$ X registrado como pago e abatido no lucro líquido.", "patch": { "impostoPago": true, "impostoPagoValor": X } }`;
 
 
 export const chatCerebro = createServerFn({ method: "POST" })

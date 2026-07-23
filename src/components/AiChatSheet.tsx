@@ -123,6 +123,11 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
           return Array.isArray(v) ? v.length > 0 : v !== undefined;
         });
       if (hasPatch) {
+        // Se a IA marcou imposto como pago e o usuário anexou imagem, guarda como comprovante.
+        if (patch.impostoPago && images.length > 0 && !patch.impostoComprovanteUrl) {
+          patch.impostoComprovanteUrl = images[0];
+          patch.impostoPagoEm = new Date().toISOString();
+        }
         const updated = applyPatch(week, patch);
         onWeekChange(updated);
       }
