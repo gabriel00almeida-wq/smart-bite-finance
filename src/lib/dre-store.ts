@@ -167,6 +167,11 @@ export type WeekPatch = {
   fixos?: LineItem[];
   marketing?: LineItem[];
   promocoes?: LineItem[];
+  simplesAliquota?: number;
+  impostoPago?: boolean;
+  impostoPagoValor?: number;
+  impostoComprovanteUrl?: string;
+  impostoPagoEm?: string;
 };
 
 
