@@ -334,6 +334,45 @@ export function EditWeekSheet({ open, onOpenChange, initial, onSave, periodLabel
                 </div>
               </AccordionContent>
             </AccordionItem>
+
+            <AccordionItem value="promo">
+              <AccordionTrigger>Promoções e Incentivos</AccordionTrigger>
+              <AccordionContent>
+                <p className="mb-2 text-xs text-slate-500">
+                  Cupons, cashback, frete grátis bancado pela casa, brindes.
+                </p>
+                <div className="space-y-2">
+                  {data.promocoes.map((f, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Input
+                        value={f.label}
+                        onChange={(e) => updatePromo(i, { label: e.target.value })}
+                        className="h-9 flex-1"
+                      />
+                      <div className="w-32">
+                        <NumberField
+                          prefix="R$"
+                          value={f.valor}
+                          onChange={(v) => updatePromo(i, { valor: v })}
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-slate-400 hover:text-red-500"
+                        onClick={() => removePromo(i)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button variant="outline" size="sm" onClick={addPromo} className="w-full">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Adicionar linha
+                  </Button>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
           </Accordion>
 
           <Button
