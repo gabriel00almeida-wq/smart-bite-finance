@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Plus, Trash2, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Trash2, Sparkles, Upload, CheckCircle2, X } from "lucide-react";
 import {
   Sheet,
   SheetContent,
