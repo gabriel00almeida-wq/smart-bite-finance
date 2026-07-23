@@ -59,8 +59,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useServerFn } from "@tanstack/react-start";
-import { analyzeDre } from "@/lib/ai-analysis.functions";
 import logoAsset from "@/assets/itadaki-logo.png.asset.json";
 import {
   computeDre,
@@ -71,6 +69,7 @@ import {
   type WeekData,
 } from "@/lib/dre-store";
 import { EditWeekSheet } from "@/components/EditWeekSheet";
+import { AiChatSheet } from "@/components/AiChatSheet";
 
 export const Route = createFileRoute("/")({
   head: () => ({
