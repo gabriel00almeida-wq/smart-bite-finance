@@ -153,10 +153,12 @@ export type WeekPatch = {
   freteEntregador?: number;
   cmv?: number;
   taxaPagamento?: number;
+  totalPedidosOverride?: number;
   fixos?: LineItem[];
   marketing?: LineItem[];
   promocoes?: LineItem[];
 };
+
 
 function mergeLineItems(list: LineItem[], patch: LineItem[]): LineItem[] {
   const out = list.map((f) => ({ ...f }));
