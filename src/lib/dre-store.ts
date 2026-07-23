@@ -94,6 +94,8 @@ export const SAMPLE_WEEK: WeekData = {
     { label: "Cupom / Frete grátis", valor: 600 },
     { label: "Cashback / Fidelidade", valor: 0 },
   ],
+  simplesAliquota: 6,
+  impostoPago: false,
 };
 
 export function weekKey(from?: Date): string {
