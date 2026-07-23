@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Brain, Loader2, Send, Sparkles } from "lucide-react";
+import { Brain, ImagePlus, Loader2, Send, Sparkles, X } from "lucide-react";
+
 import {
   Sheet,
   SheetContent,
@@ -19,7 +20,7 @@ import {
   type WeekPatch,
 } from "@/lib/dre-store";
 
-type Msg = { role: "user" | "assistant"; content: string; patchApplied?: boolean };
+type Msg = { role: "user" | "assistant"; content: string; images?: string[]; patchApplied?: boolean };
 
 type Props = {
   open: boolean;
@@ -38,12 +39,15 @@ const SUGGESTIONS = [
 export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabel }: Props) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
+  const [pendingImages, setPendingImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const chat = useServerFn(chatCerebro);
   const analyze = useServerFn(analyzeDre);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 60);
@@ -53,18 +57,55 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
 
+  async function handleFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const arr = Array.from(files).slice(0, 4);
+    const dataUrls = await Promise.all(
+      arr.map(
+        (f) =>
+          new Promise<string>((resolve, reject) => {
+            if (!f.type.startsWith("image/")) {
+              reject(new Error("Apenas imagens são suportadas."));
+              return;
+            }
+            if (f.size > 8 * 1024 * 1024) {
+              reject(new Error(`"${f.name}" passa de 8MB.`));
+              return;
+            }
+            const r = new FileReader();
+            r.onload = () => resolve(String(r.result));
+            r.onerror = () => reject(r.error);
+            r.readAsDataURL(f);
+          }),
+      ),
+    ).catch((e) => {
+      setError(e instanceof Error ? e.message : "Erro ao ler imagem");
+      return [] as string[];
+    });
+    if (dataUrls.length) setPendingImages((p) => [...p, ...dataUrls].slice(0, 4));
+  }
+
   async function send(text: string) {
     const clean = text.trim();
-    if (!clean || loading) return;
+    const images = pendingImages;
+    if ((!clean && images.length === 0) || loading) return;
     setError("");
-    const next: Msg[] = [...messages, { role: "user", content: clean }];
+    const next: Msg[] = [
+      ...messages,
+      { role: "user", content: clean, images: images.length ? images : undefined },
+    ];
     setMessages(next);
     setInput("");
+    setPendingImages([]);
     setLoading(true);
     try {
       const res = await chat({
         data: {
-          messages: next.map((m) => ({ role: m.role, content: m.content })),
+          messages: next.map((m) => ({
+            role: m.role,
+            content: m.content,
+            ...(m.images && m.images.length ? { images: m.images } : {}),
+          })),
           currentWeek: week,
           periodo: periodLabel,
         },
@@ -100,6 +141,7 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
       setTimeout(() => inputRef.current?.focus(), 30);
     }
   }
+
 
   async function runFullAnalysis() {
     const dre = computeDre(week);
@@ -194,13 +236,26 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
                     : "bg-white text-slate-800 ring-1 ring-slate-200/60 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-800"
                 }`}
               >
+                {m.images && m.images.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {m.images.map((src, idx) => (
+                      <img
+                        key={idx}
+                        src={src}
+                        alt=""
+                        className="h-24 w-24 rounded-md object-cover ring-1 ring-white/30"
+                      />
+                    ))}
+                  </div>
+                )}
                 {m.role === "assistant" ? (
                   <article className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-headings:mt-2 prose-headings:mb-1 dark:prose-invert">
                     <ReactMarkdown>{m.content}</ReactMarkdown>
                   </article>
                 ) : (
-                  m.content
+                  m.content || <span className="italic opacity-70">imagem enviada</span>
                 )}
+
                 {m.patchApplied && (
                   <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
                     <Sparkles className="h-3 w-3" />
@@ -250,6 +305,26 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
               </Button>
             )}
           </div>
+          {pendingImages.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {pendingImages.map((src, idx) => (
+                <div key={idx} className="relative">
+                  <img
+                    src={src}
+                    alt=""
+                    className="h-16 w-16 rounded-md object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPendingImages((p) => p.filter((_, i) => i !== idx))}
+                    className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-slate-900 text-white shadow hover:bg-slate-700"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -257,6 +332,28 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
             }}
             className="flex items-end gap-2"
           >
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                handleFiles(e.target.files);
+                if (fileRef.current) fileRef.current.value = "";
+              }}
+            />
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              onClick={() => fileRef.current?.click()}
+              disabled={loading || pendingImages.length >= 4}
+              className="h-11 w-11 shrink-0"
+              title="Anexar imagem"
+            >
+              <ImagePlus className="h-4 w-4" />
+            </Button>
             <Textarea
               ref={inputRef}
               value={input}
@@ -267,14 +364,14 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
                   send(input);
                 }
               }}
-              placeholder="Ex: vendi 8500 no iFood com 90 pedidos..."
+              placeholder="Ex: vendi 8500 no iFood com 90 pedidos... ou anexe um print"
               rows={2}
               className="min-h-[44px] resize-none"
             />
             <Button
               type="submit"
               size="icon"
-              disabled={loading || !input.trim()}
+              disabled={loading || (!input.trim() && pendingImages.length === 0)}
               className="h-11 w-11 shrink-0 bg-indigo-600 hover:bg-indigo-700"
             >
               <Send className="h-4 w-4" />
@@ -285,3 +382,4 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
     </Sheet>
   );
 }
+

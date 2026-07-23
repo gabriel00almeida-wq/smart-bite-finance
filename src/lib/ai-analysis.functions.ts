@@ -73,11 +73,13 @@ const ChatSchema = z.object({
     z.object({
       role: z.enum(["user", "assistant"]),
       content: z.string(),
+      images: z.array(z.string()).optional(),
     }),
   ),
   currentWeek: z.any(),
   periodo: z.string(),
 });
+
 
 const SYSTEM_PROMPT = `Você é o "Cérebro Itadaki" — assistente financeiro de um restaurante delivery de sushi.
 Sua função é DUPLA:
@@ -105,6 +107,7 @@ Regras do patch:
 - Para custos fixos novos, use label descritivo curto ("Aluguel", "Folha", "Energia").
 - Se o usuário só quer conversar (perguntou algo, pediu análise), devolva "patch": {}.
 - NUNCA invente dados. Só extraia o que foi dito.
+- Se o usuário enviar IMAGENS (prints de painel iFood/99Food, notas fiscais, planilhas, fotos de recibos), LEIA os números visíveis nelas e extraia para o patch da mesma forma. Cite no reply o que você conseguiu ler.
 
 Exemplos:
 Usuário: "vendi 12500 no ifood com 130 pedidos"
@@ -116,6 +119,7 @@ Usuário: "gastei 800 em embalagens e 6500 de aluguel"
 Usuário: "como está minha margem?"
 → { "reply": "Sua margem de contribuição está em X% ... [análise]", "patch": {} }`;
 
+
 export const chatCerebro = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => ChatSchema.parse(data))
   .handler(async ({ data }) => {
@@ -123,15 +127,29 @@ export const chatCerebro = createServerFn({ method: "POST" })
 DRE atual (JSON):
 ${JSON.stringify(data.currentWeek, null, 2)}`;
 
+    const gatewayMessages = data.messages.map((m) => {
+      if (m.role === "user" && m.images && m.images.length > 0) {
+        return {
+          role: "user" as const,
+          content: [
+            { type: "text", text: m.content || "(imagem em anexo)" },
+            ...m.images.map((url) => ({ type: "image_url", image_url: { url } })),
+          ],
+        };
+      }
+      return { role: m.role, content: m.content };
+    });
+
     const json = await callGateway({
       model: "google/gemini-3.6-flash",
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "system", content: contextMsg },
-        ...data.messages,
+        ...gatewayMessages,
       ],
     });
+
 
     const raw: string = json.choices?.[0]?.message?.content ?? "{}";
     let parsed: { reply?: string; patch?: unknown } = {};
