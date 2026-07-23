@@ -21,6 +21,12 @@ export type WeekData = {
   marketing: LineItem[];
   promocoes: LineItem[];
   totalPedidosOverride?: number; // se > 0, usa este total ao invés da soma por canal
+  // Simples Nacional — provisão sobre a receita, só abate no lucro quando o pagamento for confirmado
+  simplesAliquota: number; // % (ex.: 6)
+  impostoPago: boolean;
+  impostoPagoValor?: number; // R$ efetivamente pago (default = provisão)
+  impostoComprovanteUrl?: string; // data URL do comprovante enviado no chat
+  impostoPagoEm?: string; // ISO date
 };
 
 
