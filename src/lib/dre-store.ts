@@ -281,7 +281,17 @@ export function computeDre(w: WeekData): DreComputed {
   const fixosTotal = w.fixos.reduce((s, f) => s + (f.valor || 0), 0);
   const marketingTotal = w.marketing.reduce((s, m) => s + (m.valor || 0), 0);
   const promocoesTotal = w.promocoes.reduce((s, m) => s + (m.valor || 0), 0);
-  const lucroLiquido = margemContribuicaoValor - fixosTotal - marketingTotal - promocoesTotal;
+  const lucroAntesImposto =
+    margemContribuicaoValor - fixosTotal - marketingTotal - promocoesTotal;
+  const simplesAliquota = w.simplesAliquota || 0;
+  const impostoProvisao = (receitaBruta * simplesAliquota) / 100;
+  const impostoDeduzido = w.impostoPago
+    ? w.impostoPagoValor && w.impostoPagoValor > 0
+      ? w.impostoPagoValor
+      : impostoProvisao
+    : 0;
+  const lucroLiquido = lucroAntesImposto - impostoDeduzido;
+  const lucroLiquidoProjetado = lucroAntesImposto - impostoProvisao;
   const lucroPct = receitaBruta > 0 ? (lucroLiquido / receitaBruta) * 100 : 0;
   const canais = w.channels
     .filter((c) => (c.receita || 0) > 0)
@@ -309,7 +319,12 @@ export function computeDre(w: WeekData): DreComputed {
     fixosTotal,
     marketingTotal,
     promocoesTotal,
+    simplesAliquota,
+    impostoProvisao,
+    impostoDeduzido,
+    impostoPago: !!w.impostoPago,
     lucroLiquido,
+    lucroLiquidoProjetado,
     lucroPct,
     canais,
   };
