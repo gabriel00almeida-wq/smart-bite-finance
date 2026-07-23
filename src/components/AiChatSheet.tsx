@@ -39,12 +39,15 @@ const SUGGESTIONS = [
 export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabel }: Props) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
+  const [pendingImages, setPendingImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const chat = useServerFn(chatCerebro);
   const analyze = useServerFn(analyzeDre);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 60);
