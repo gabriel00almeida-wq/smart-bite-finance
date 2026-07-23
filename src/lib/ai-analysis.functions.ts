@@ -73,11 +73,13 @@ const ChatSchema = z.object({
     z.object({
       role: z.enum(["user", "assistant"]),
       content: z.string(),
+      images: z.array(z.string()).optional(),
     }),
   ),
   currentWeek: z.any(),
   periodo: z.string(),
 });
+
 
 const SYSTEM_PROMPT = `Você é o "Cérebro Itadaki" — assistente financeiro de um restaurante delivery de sushi.
 Sua função é DUPLA:
