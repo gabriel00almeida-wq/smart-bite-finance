@@ -125,7 +125,10 @@ export function loadWeek(key: string): WeekData {
         pedidos: c.pedidos ?? 0,
         taxas: c.taxas ?? (c.taxaPct ? (receita * c.taxaPct) / 100 : 0),
         descontos: c.descontos ?? 0,
-        color: c.color ?? base.color,
+        color:
+          DEFAULT_CHANNELS.find(
+            (d) => d.nome.toLowerCase() === (c.nome ?? base.nome).toLowerCase(),
+          )?.color ?? base.color,
       };
     });
     return {
