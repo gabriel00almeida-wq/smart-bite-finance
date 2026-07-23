@@ -101,19 +101,21 @@ export function loadWeek(key: string): WeekData {
       taxaPagamentoPct?: number;
     };
     // Merge + migração de campos antigos
-    const channels: ChannelRow[] = (parsed.channels?.length ? parsed.channels : EMPTY_WEEK.channels).map(
-      (c, i) => {
-        const base = EMPTY_WEEK.channels[i] ?? EMPTY_WEEK.channels[0];
-        return {
-          nome: c.nome ?? base.nome,
-          receita: c.receita ?? 0,
-          pedidos: c.pedidos ?? 0,
-          taxas: c.taxas ?? (c.taxaPct && c.receita ? (c.receita * c.taxaPct) / 100 : 0),
-          descontos: c.descontos ?? 0,
-          color: c.color ?? base.color,
-        };
-      },
-    );
+    const rawChannels = (parsed.channels?.length ? parsed.channels : EMPTY_WEEK.channels) as Array<
+      Partial<ChannelRow> & { taxaPct?: number }
+    >;
+    const channels: ChannelRow[] = rawChannels.map((c, i) => {
+      const base = EMPTY_WEEK.channels[i] ?? EMPTY_WEEK.channels[0];
+      const receita = c.receita ?? 0;
+      return {
+        nome: c.nome ?? base.nome,
+        receita,
+        pedidos: c.pedidos ?? 0,
+        taxas: c.taxas ?? (c.taxaPct ? (receita * c.taxaPct) / 100 : 0),
+        descontos: c.descontos ?? 0,
+        color: c.color ?? base.color,
+      };
+    });
     return {
       ...EMPTY_WEEK,
       ...parsed,
