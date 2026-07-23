@@ -101,6 +101,22 @@ export function EditWeekSheet({ open, onOpenChange, initial, onSave, periodLabel
     }));
   }
 
+  function updatePromo(i: number, patch: Partial<LineItem>) {
+    setData((d) => ({
+      ...d,
+      promocoes: d.promocoes.map((f, idx) => (idx === i ? { ...f, ...patch } : f)),
+    }));
+  }
+  function removePromo(i: number) {
+    setData((d) => ({ ...d, promocoes: d.promocoes.filter((_, idx) => idx !== i) }));
+  }
+  function addPromo() {
+    setData((d) => ({
+      ...d,
+      promocoes: [...d.promocoes, { label: "Nova promoção", valor: 0 }],
+    }));
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex w-full flex-col overflow-y-auto p-0 sm:max-w-xl">
