@@ -357,7 +357,7 @@ function Dashboard() {
               variant="outline"
               size="icon"
               className="h-9 w-9 bg-white dark:bg-slate-900"
-              onClick={runAi}
+              onClick={() => setAiOpen(true)}
               title="Análise IA — CEO QI 200"
             >
               <Brain className="h-4 w-4 text-indigo-500" />
