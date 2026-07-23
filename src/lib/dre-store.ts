@@ -254,25 +254,6 @@ export type DreComputed = {
   lucroPct: number;
   canais: { nome: string; receita: number; percentual: number; color: string }[];
 };
-  totalPedidos: number;
-  ticketMedio: number;
-  taxasMarketplace: number;
-  taxasPagamento: number;
-  descontosTotal: number;
-  embalagens: number;
-  freteEntregador: number;
-  cmv: number;
-  cmvPct: number;
-  custosVariaveis: number;
-  margemContribuicaoValor: number;
-  margemContribuicaoPct: number;
-  fixosTotal: number;
-  marketingTotal: number;
-  promocoesTotal: number;
-  lucroLiquido: number;
-  lucroPct: number;
-  canais: { nome: string; receita: number; percentual: number; color: string }[];
-};
 
 export function computeDre(w: WeekData): DreComputed {
   const receitaBruta = w.channels.reduce((s, c) => s + (c.receita || 0), 0);
