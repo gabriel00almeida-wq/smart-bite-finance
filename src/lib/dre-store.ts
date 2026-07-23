@@ -198,6 +198,9 @@ export function applyPatch(w: WeekData, patch: WeekPatch): WeekData {
   if (patch.freteEntregador !== undefined) next.freteEntregador = patch.freteEntregador;
   if (patch.cmv !== undefined) next.cmv = patch.cmv;
   if (patch.taxaPagamento !== undefined) next.taxaPagamento = patch.taxaPagamento;
+  if (patch.totalPedidosOverride !== undefined)
+    next.totalPedidosOverride = patch.totalPedidosOverride;
+
   if (patch.fixos) next.fixos = mergeLineItems(next.fixos, patch.fixos);
   if (patch.marketing) next.marketing = mergeLineItems(next.marketing, patch.marketing);
   if (patch.promocoes) next.promocoes = mergeLineItems(next.promocoes, patch.promocoes);
