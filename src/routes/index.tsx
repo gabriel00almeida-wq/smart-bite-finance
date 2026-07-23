@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -25,6 +25,7 @@ import {
   Sun,
   CalendarIcon,
   Loader2,
+  Pencil,
 } from "lucide-react";
 import {
   BarChart,
@@ -61,6 +62,15 @@ import {
 import { useServerFn } from "@tanstack/react-start";
 import { analyzeDre } from "@/lib/ai-analysis.functions";
 import logoAsset from "@/assets/itadaki-logo.png.asset.json";
+import {
+  computeDre,
+  loadWeek,
+  saveWeek,
+  weekKey,
+  EMPTY_WEEK,
+  type WeekData,
+} from "@/lib/dre-store";
+import { EditWeekSheet } from "@/components/EditWeekSheet";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -81,21 +91,6 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-const revenueData = [
-  { mes: "Fev", Receita: 68000, Custos: 52000 },
-  { mes: "Mar", Receita: 74500, Custos: 55800 },
-  { mes: "Abr", Receita: 71200, Custos: 54200 },
-  { mes: "Mai", Receita: 82300, Custos: 60100 },
-  { mes: "Jun", Receita: 88900, Custos: 63400 },
-  { mes: "Jul", Receita: 95200, Custos: 66500 },
-];
-
-const channelData = [
-  { name: "iFood", value: 45, color: "#EA1D2C" },
-  { name: "99Food", value: 25, color: "#FFD100" },
-  { name: "Anotai", value: 30, color: "#22C55E" },
-];
-
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", active: true },
   { icon: FileBarChart, label: "DRE Completa" },
@@ -114,12 +109,6 @@ const secos = [
   { nome: "Nori", unidade: "un" },
   { nome: "Gergelim", unidade: "kg" },
   { nome: "Açúcar", unidade: "kg" },
-];
-
-const notasLidas = [
-  "NF 8842 — Atacadão Distribuidora",
-  "NF 1207 — Peixaria Central",
-  "NF 5591 — Embalagens SP",
 ];
 
 function KpiCard({
@@ -247,11 +236,25 @@ function Dashboard() {
     const now = new Date();
     return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }) };
   });
+  const [week, setWeek] = useState<WeekData>(EMPTY_WEEK);
+  const [editOpen, setEditOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiContent, setAiContent] = useState<string>("");
   const [aiError, setAiError] = useState<string>("");
   const analyze = useServerFn(analyzeDre);
+
+  const key = weekKey(range?.from);
+
+  // Load stored data whenever the week changes
+  useEffect(() => {
+    setWeek(loadWeek(key));
+    setAiContent("");
+    setAiError("");
+  }, [key]);
+
+  const dre = useMemo(() => computeDre(week), [week]);
+  const hasData = dre.receitaBruta > 0;
 
   const rangeLabel = range?.from
     ? range.to
@@ -259,7 +262,18 @@ function Dashboard() {
       : format(range.from, "dd MMM yyyy", { locale: ptBR })
     : "Escolher período";
 
+  function handleSave(data: WeekData) {
+    saveWeek(key, data);
+    setWeek(data);
+    setAiContent(""); // invalidate previous analysis
+  }
+
   async function runAi() {
+    if (!hasData) {
+      setAiOpen(true);
+      setAiError("Preencha a apuração da semana antes de pedir análise da IA.");
+      return;
+    }
     setAiOpen(true);
     if (aiContent || aiLoading) return;
     setAiLoading(true);
@@ -269,14 +283,14 @@ function Dashboard() {
         data: {
           periodo: rangeLabel,
           dre: {
-            receitaBruta: 95200,
-            custosVariaveis: 66500,
-            custosFixos: 16250,
-            lucroLiquido: 12450,
-            margemContribuicao: 18.5,
-            cmv: 31.2,
-            ticketMedio: 95.5,
-            canais: channelData.map((c) => ({ nome: c.name, percentual: c.value })),
+            receitaBruta: dre.receitaBruta,
+            custosVariaveis: dre.custosVariaveis,
+            custosFixos: dre.fixosTotal + dre.marketingTotal,
+            lucroLiquido: dre.lucroLiquido,
+            margemContribuicao: +dre.margemContribuicaoPct.toFixed(2),
+            cmv: +dre.cmvPct.toFixed(2),
+            ticketMedio: +dre.ticketMedio.toFixed(2),
+            canais: dre.canais.map((c) => ({ nome: c.nome, percentual: c.percentual })),
           },
         },
       });
@@ -287,6 +301,14 @@ function Dashboard() {
       setAiLoading(false);
     }
   }
+
+  const revenueChart = [
+    {
+      periodo: rangeLabel,
+      Receita: dre.receitaBruta,
+      Custos: dre.custosVariaveis + dre.fixosTotal + dre.marketingTotal,
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -361,6 +383,14 @@ function Dashboard() {
             </Popover>
 
             <Button
+              className="h-9 gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
+              onClick={() => setEditOpen(true)}
+            >
+              <Pencil className="h-4 w-4" />
+              <span className="hidden sm:inline text-xs">Editar dados</span>
+            </Button>
+
+            <Button
               variant="outline"
               size="icon"
               className="h-9 w-9 bg-white dark:bg-slate-900"
@@ -388,39 +418,49 @@ function Dashboard() {
         </header>
 
         <main className="space-y-6 p-4 sm:p-6">
+          {!hasData && (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center dark:border-slate-700 dark:bg-slate-900">
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                Nenhuma apuração para essa semana ainda.
+              </p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Clique em <strong>Editar dados</strong> para lançar receitas por canal, custos e
+                CMV. Tudo é calculado automaticamente.
+              </p>
+              <Button
+                className="mt-4 bg-emerald-600 text-white hover:bg-emerald-700"
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Começar apuração
+              </Button>
+            </div>
+          )}
+
           {/* KPIs */}
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <KpiCard
               title="Margem de Contribuição"
-              value="18.5%"
+              value={`${dre.margemContribuicaoPct.toFixed(1)}%`}
               icon={Percent}
-              trend
-              trendUp
-              trendLabel="+2% vs semana passada"
+              positive={dre.margemContribuicaoPct >= 15}
             />
             <KpiCard
               title="CMV Real"
-              value="31.2%"
+              value={`${dre.cmvPct.toFixed(1)}%`}
               icon={Receipt}
-              trend
-              trendUp={false}
-              trendLabel="-1.4% vs semana passada"
+              positive={dre.cmvPct <= 35 && dre.cmvPct > 0}
             />
             <KpiCard
               title="Lucro Líquido"
-              value="R$ 12.450,00"
+              value={currency(dre.lucroLiquido)}
               icon={DollarSign}
-              trend
-              trendUp
-              trendLabel="+8.2% vs semana passada"
+              positive={dre.lucroLiquido >= 0}
             />
             <KpiCard
               title="Ticket Médio"
-              value="R$ 95,50"
+              value={currency(dre.ticketMedio)}
               icon={TrendingUp}
-              trend
-              trendUp
-              trendLabel="+R$ 4,10"
             />
           </section>
 
@@ -432,7 +472,7 @@ function Dashboard() {
                   <h3 className="text-base font-semibold text-slate-900 dark:text-white">
                     Receita vs Custos
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Últimos 6 meses</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Semana atual</p>
                 </div>
                 <Badge variant="secondary" className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                   BRL
@@ -440,15 +480,15 @@ function Dashboard() {
               </div>
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={revenueData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} className="dark:!stroke-slate-800" />
-                    <XAxis dataKey="mes" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                  <BarChart data={revenueChart}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                    <XAxis dataKey="periodo" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
                     <YAxis
                       stroke="#94a3b8"
                       fontSize={12}
                       tickLine={false}
                       axisLine={false}
-                      tickFormatter={(v) => `R$${v / 1000}k`}
+                      tickFormatter={(v) => `R$${Math.round(v / 1000)}k`}
                     />
                     <Tooltip
                       contentStyle={{
@@ -474,31 +514,39 @@ function Dashboard() {
                 <p className="text-xs text-slate-500 dark:text-slate-400">Distribuição semanal</p>
               </div>
               <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={channelData}
-                      innerRadius={55}
-                      outerRadius={85}
-                      paddingAngle={3}
-                      dataKey="value"
-                    >
-                      {channelData.map((c) => (
-                        <Cell key={c.name} fill={c.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(v: number) => `${v}%`} />
-                  </PieChart>
-                </ResponsiveContainer>
+                {dre.canais.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={dre.canais}
+                        innerRadius={55}
+                        outerRadius={85}
+                        paddingAngle={3}
+                        dataKey="percentual"
+                      >
+                        {dre.canais.map((c) => (
+                          <Cell key={c.nome} fill={c.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v: number) => `${v}%`} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="grid h-full place-items-center text-xs text-slate-400">
+                    Sem receitas lançadas
+                  </div>
+                )}
               </div>
               <ul className="mt-2 space-y-2">
-                {channelData.map((c) => (
-                  <li key={c.name} className="flex items-center justify-between text-sm">
+                {dre.canais.map((c) => (
+                  <li key={c.nome} className="flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                       <span className="h-2.5 w-2.5 rounded-full" style={{ background: c.color }} />
-                      {c.name}
+                      {c.nome}
                     </span>
-                    <span className="font-medium text-slate-900 dark:text-white">{c.value}%</span>
+                    <span className="font-medium text-slate-900 dark:text-white">
+                      {c.percentual}%
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -519,25 +567,46 @@ function Dashboard() {
               <ChevronDown className="h-4 w-4 text-slate-400" />
             </div>
             <Accordion type="multiple" defaultValue={["Receita Bruta Total", "Custos Variáveis"]}>
-              <DreRow label="Receita Bruta Total" value={currency(95200)}>
-                <SubRow label="iFood (45%)" value={currency(42840)} />
-                <SubRow label="99Food (25%)" value={currency(23800)} />
-                <SubRow label="Anotai (30%)" value={currency(28560)} />
+              <DreRow label="Receita Bruta Total" value={currency(dre.receitaBruta)}>
+                {week.channels
+                  .filter((c) => c.receita > 0)
+                  .map((c) => (
+                    <SubRow
+                      key={c.nome}
+                      label={`${c.nome} (${dre.receitaBruta > 0 ? ((c.receita / dre.receitaBruta) * 100).toFixed(1) : 0}%)`}
+                      value={currency(c.receita)}
+                    />
+                  ))}
+                {dre.canais.length === 0 && <SubRow label="—" value={currency(0)} />}
               </DreRow>
-              <DreRow label="Custos Variáveis" value={`- ${currency(66500)}`}>
-                <SubRow label="CMV (Insumos)" value={`- ${currency(29702)}`} />
-                <SubRow label="Embalagens" value={`- ${currency(4285)}`} />
-                <SubRow label="Taxas iFood" value={`- ${currency(10710)}`} />
-                <SubRow label="Taxas 99Food" value={`- ${currency(5236)}`} />
-                <SubRow label="Taxas Cartão Anotai" value={`- ${currency(2856)}`} />
+              <DreRow label="Custos Variáveis" value={`- ${currency(dre.custosVariaveis)}`}>
+                <SubRow label="CMV (Insumos)" value={`- ${currency(dre.cmv)}`} />
+                <SubRow label="Embalagens" value={`- ${currency(dre.embalagens)}`} />
+                <SubRow label="Frete / entregador" value={`- ${currency(dre.freteEntregador)}`} />
+                <SubRow label="Taxas marketplace" value={`- ${currency(dre.taxasMarketplace)}`} />
+                <SubRow label="Taxas de pagamento" value={`- ${currency(dre.taxasPagamento)}`} />
               </DreRow>
-              <DreRow label="Margem de Contribuição" value="18.5%" />
-              <DreRow label="Custos Fixos" value={`- ${currency(16250)}`}>
-                <SubRow label="Aluguel" value={`- ${currency(6500)}`} />
-                <SubRow label="Folha de Pagamento" value={`- ${currency(7800)}`} />
-                <SubRow label="Utilidades" value={`- ${currency(1950)}`} />
+              <DreRow
+                label="Margem de Contribuição"
+                value={`${dre.margemContribuicaoPct.toFixed(1)}% · ${currency(dre.margemContribuicaoValor)}`}
+              />
+              <DreRow label="Custos Fixos" value={`- ${currency(dre.fixosTotal)}`}>
+                {week.fixos
+                  .filter((f) => f.valor > 0)
+                  .map((f, i) => (
+                    <SubRow key={i} label={f.label} value={`- ${currency(f.valor)}`} />
+                  ))}
+                {dre.fixosTotal === 0 && <SubRow label="—" value={currency(0)} />}
               </DreRow>
-              <DreRow label="Lucro Líquido" value={currency(12450)} highlight />
+              <DreRow label="Marketing / Investimentos" value={`- ${currency(dre.marketingTotal)}`}>
+                {week.marketing
+                  .filter((f) => f.valor > 0)
+                  .map((f, i) => (
+                    <SubRow key={i} label={f.label} value={`- ${currency(f.valor)}`} />
+                  ))}
+                {dre.marketingTotal === 0 && <SubRow label="—" value={currency(0)} />}
+              </DreRow>
+              <DreRow label="Lucro Líquido" value={currency(dre.lucroLiquido)} highlight />
             </Accordion>
           </section>
 
@@ -580,18 +649,10 @@ function Dashboard() {
                     Últimas notas lidas pela IA
                   </p>
                   <ul className="space-y-2">
-                    {notasLidas.map((n) => (
-                      <li
-                        key={n}
-                        className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
-                      >
-                        <span className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                          {n}
-                        </span>
-                        <span className="text-xs text-slate-400">OK</span>
-                      </li>
-                    ))}
+                    <li className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-center text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-950">
+                      <CheckCircle2 className="mx-auto mb-1 h-4 w-4 text-slate-300" />
+                      Nenhuma nota processada ainda
+                    </li>
                   </ul>
                 </div>
               </div>
@@ -653,6 +714,15 @@ function Dashboard() {
           </section>
         </main>
       </div>
+
+      {/* Edit Sheet */}
+      <EditWeekSheet
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        initial={week}
+        onSave={handleSave}
+        periodLabel={rangeLabel}
+      />
 
       {/* AI Analysis Sheet */}
       <Sheet open={aiOpen} onOpenChange={setAiOpen}>
