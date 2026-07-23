@@ -133,7 +133,23 @@ export function EditWeekSheet({ open, onOpenChange, initial, onSave, periodLabel
             <AccordionItem value="receitas">
               <AccordionTrigger>Receitas por canal</AccordionTrigger>
               <AccordionContent>
+                <div className="mb-3 rounded-lg border border-dashed border-slate-300 p-3 dark:border-slate-700">
+                  <Label className="text-xs text-slate-500">
+                    Nº total de pedidos na semana (opcional)
+                  </Label>
+                  <p className="mb-2 text-[11px] text-slate-400">
+                    Se preenchido, este total é usado no ticket médio no lugar da soma dos pedidos por canal.
+                  </p>
+                  <NumberField
+                    value={data.totalPedidosOverride ?? 0}
+                    onChange={(v) =>
+                      setData((d) => ({ ...d, totalPedidosOverride: v || undefined }))
+                    }
+                    placeholder="Ex.: 997"
+                  />
+                </div>
                 <div className="space-y-3">
+
                   {data.channels.map((c, i) => (
                     <div
                       key={c.nome}

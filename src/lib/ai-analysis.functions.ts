@@ -112,11 +112,13 @@ Você DEVE responder SEMPRE em JSON puro, sem markdown, sem cercas, no formato:
     "freteEntregador"?: number,
     "cmv"?: number,
     "taxaPagamento"?: number,
+    "totalPedidosOverride"?: number,
     "fixos": [{ "label": string, "valor": number }],
     "marketing": [{ "label": string, "valor": number }],
     "promocoes": [{ "label": string, "valor": number }]
   }
 }
+
 
 Regras do patch:
 - Só inclua CAMPOS que o usuário mencionou. Se não mencionou, OMITA (não use 0).

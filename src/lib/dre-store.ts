@@ -20,7 +20,9 @@ export type WeekData = {
   fixos: LineItem[];
   marketing: LineItem[];
   promocoes: LineItem[];
+  totalPedidosOverride?: number; // se > 0, usa este total ao invés da soma por canal
 };
+
 
 export const DEFAULT_CHANNELS: ChannelRow[] = [
   { nome: "iFood", receita: 0, pedidos: 0, taxas: 0, descontos: 0, color: "#EA1D2C" },
@@ -151,10 +153,12 @@ export type WeekPatch = {
   freteEntregador?: number;
   cmv?: number;
   taxaPagamento?: number;
+  totalPedidosOverride?: number;
   fixos?: LineItem[];
   marketing?: LineItem[];
   promocoes?: LineItem[];
 };
+
 
 function mergeLineItems(list: LineItem[], patch: LineItem[]): LineItem[] {
   const out = list.map((f) => ({ ...f }));
@@ -194,6 +198,9 @@ export function applyPatch(w: WeekData, patch: WeekPatch): WeekData {
   if (patch.freteEntregador !== undefined) next.freteEntregador = patch.freteEntregador;
   if (patch.cmv !== undefined) next.cmv = patch.cmv;
   if (patch.taxaPagamento !== undefined) next.taxaPagamento = patch.taxaPagamento;
+  if (patch.totalPedidosOverride !== undefined)
+    next.totalPedidosOverride = patch.totalPedidosOverride;
+
   if (patch.fixos) next.fixos = mergeLineItems(next.fixos, patch.fixos);
   if (patch.marketing) next.marketing = mergeLineItems(next.marketing, patch.marketing);
   if (patch.promocoes) next.promocoes = mergeLineItems(next.promocoes, patch.promocoes);
@@ -224,8 +231,13 @@ export type DreComputed = {
 
 export function computeDre(w: WeekData): DreComputed {
   const receitaBruta = w.channels.reduce((s, c) => s + (c.receita || 0), 0);
-  const totalPedidos = w.channels.reduce((s, c) => s + (c.pedidos || 0), 0);
+  const somaPedidosCanais = w.channels.reduce((s, c) => s + (c.pedidos || 0), 0);
+  const totalPedidos =
+    w.totalPedidosOverride && w.totalPedidosOverride > 0
+      ? w.totalPedidosOverride
+      : somaPedidosCanais;
   const ticketMedio = totalPedidos > 0 ? receitaBruta / totalPedidos : 0;
+
   const taxasMarketplace = w.channels.reduce((s, c) => s + (c.taxas || 0), 0);
   const descontosTotal = w.channels.reduce((s, c) => s + (c.descontos || 0), 0);
   const taxasPagamento = w.taxaPagamento || 0;
