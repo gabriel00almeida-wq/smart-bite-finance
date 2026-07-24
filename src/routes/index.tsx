@@ -26,6 +26,9 @@ import {
   CalendarIcon,
   Loader2,
   Pencil,
+  Camera,
+  ImagePlus,
+  X,
 } from "lucide-react";
 import {
   BarChart,
