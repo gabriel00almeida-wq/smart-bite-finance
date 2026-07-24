@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Brain, ImagePlus, Loader2, Send, Sparkles, X } from "lucide-react";
+import { Brain, Camera, ImagePlus, Loader2, Send, Sparkles, X } from "lucide-react";
 
 import {
   Sheet,
