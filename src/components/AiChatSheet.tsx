@@ -47,6 +47,7 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
 
 
   useEffect(() => {
