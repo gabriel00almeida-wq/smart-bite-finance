@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Brain, ImagePlus, Loader2, Send, Sparkles, X } from "lucide-react";
+import { Brain, Camera, ImagePlus, Loader2, Send, Sparkles, X } from "lucide-react";
 
 import {
   Sheet,
@@ -47,6 +47,7 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
 
 
   useEffect(() => {
@@ -348,6 +349,28 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
                 if (fileRef.current) fileRef.current.value = "";
               }}
             />
+            <input
+              ref={cameraRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => {
+                handleFiles(e.target.files);
+                if (cameraRef.current) cameraRef.current.value = "";
+              }}
+            />
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              onClick={() => cameraRef.current?.click()}
+              disabled={loading || pendingImages.length >= 4}
+              className="h-11 w-11 shrink-0"
+              title="Tirar foto"
+            >
+              <Camera className="h-4 w-4" />
+            </Button>
             <Button
               type="button"
               size="icon"

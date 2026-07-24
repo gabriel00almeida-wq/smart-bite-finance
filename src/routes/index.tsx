@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -26,6 +26,9 @@ import {
   CalendarIcon,
   Loader2,
   Pencil,
+  Camera,
+  ImagePlus,
+  X,
 } from "lucide-react";
 import {
   BarChart,
@@ -68,8 +71,11 @@ import {
   EMPTY_WEEK,
   type WeekData,
 } from "@/lib/dre-store";
+import { applyPatch, type WeekPatch } from "@/lib/dre-store";
 import { EditWeekSheet } from "@/components/EditWeekSheet";
 import { AiChatSheet } from "@/components/AiChatSheet";
+import { useServerFn } from "@tanstack/react-start";
+import { chatCerebro } from "@/lib/ai-analysis.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -238,6 +244,12 @@ function Dashboard() {
   const [week, setWeek] = useState<WeekData>(EMPTY_WEEK);
   const [editOpen, setEditOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanMsg, setScanMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [scannedNotes, setScannedNotes] = useState<{ preview: string; summary: string; at: number }[]>([]);
+  const scanUploadRef = useRef<HTMLInputElement>(null);
+  const scanCameraRef = useRef<HTMLInputElement>(null);
+  const chat = useServerFn(chatCerebro);
 
   const key = weekKey(range?.from);
 
@@ -263,6 +275,76 @@ function Dashboard() {
   function handleWeekChangeFromChat(data: WeekData) {
     saveWeek(key, data);
     setWeek(data);
+  }
+
+  async function handleScanFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const list = Array.from(files).slice(0, 3);
+    setScanMsg(null);
+    setScanning(true);
+    try {
+      const dataUrls = await Promise.all(
+        list.map(
+          (f) =>
+            new Promise<string>((resolve, reject) => {
+              if (!f.type.startsWith("image/")) {
+                reject(new Error("Apenas imagens."));
+                return;
+              }
+              if (f.size > 8 * 1024 * 1024) {
+                reject(new Error(`"${f.name}" passa de 8MB.`));
+                return;
+              }
+              const r = new FileReader();
+              r.onload = () => resolve(String(r.result));
+              r.onerror = () => reject(r.error);
+              r.readAsDataURL(f);
+            }),
+        ),
+      );
+      const res = await chat({
+        data: {
+          messages: [
+            {
+              role: "user",
+              content:
+                "Leia esta(s) nota(s) fiscal(is) / comprovante(s) e extraia os valores para a DRE (embalagens, CMV, taxa de cartão, fixos, imposto pago etc.). Só use números visíveis na imagem.",
+              images: dataUrls,
+            },
+          ],
+          currentWeek: week,
+          periodo: rangeLabel,
+        },
+      });
+      let patch: WeekPatch = {};
+      try {
+        patch = JSON.parse(res.patchJson) as WeekPatch;
+      } catch {
+        patch = {};
+      }
+      const hasPatch =
+        !!patch &&
+        Object.keys(patch).some((k) => {
+          const v = (patch as Record<string, unknown>)[k];
+          return Array.isArray(v) ? v.length > 0 : v !== undefined;
+        });
+      if (hasPatch) {
+        const updated = applyPatch(week, patch);
+        saveWeek(key, updated);
+        setWeek(updated);
+      }
+      setScannedNotes((n) =>
+        [
+          { preview: dataUrls[0], summary: res.reply || (hasPatch ? "Nota lida" : "Sem dados"), at: Date.now() },
+          ...n,
+        ].slice(0, 5),
+      );
+      setScanMsg({ ok: hasPatch, text: hasPatch ? "DRE atualizada com a nota." : res.reply || "Nada extraído." });
+    } catch (e) {
+      setScanMsg({ ok: false, text: e instanceof Error ? e.message : "Erro ao processar a nota." });
+    } finally {
+      setScanning(false);
+    }
   }
 
   const revenueChart = [
@@ -610,78 +692,147 @@ function Dashboard() {
             </Accordion>
           </section>
 
-          {/* Motor de Custos IA */}
+          {/* Motor de Custos IA — versão discreta */}
           <section className="rounded-xl bg-white shadow-sm ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-slate-800">
-            <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
-                  <Sparkles className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">
-                    Motor de Custos IA
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Upload de notas + apuração automática de CMV
-                  </p>
-                </div>
+                <Sparkles className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Motor de Custos IA
+                </h3>
               </div>
+              <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                Notas fiscais & sobras
+              </span>
             </div>
 
             <div className="grid grid-cols-1 gap-0 lg:grid-cols-2">
-              <div className="border-b border-slate-100 p-5 lg:border-b-0 lg:border-r dark:border-slate-800">
-                <h4 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">
-                  Entrada de Notas
-                </h4>
-                <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center transition hover:border-emerald-400 hover:bg-emerald-50/40 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-emerald-500">
-                  <UploadCloud className="h-8 w-8 text-slate-400" />
-                  <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Arraste as fotos das notas fiscais
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    ou clique para fazer upload (JPG, PNG, PDF)
-                  </p>
-                  <input type="file" className="hidden" multiple />
-                </label>
+              <div className="border-b border-slate-100 p-4 lg:border-b-0 lg:border-r dark:border-slate-800">
+                <div className="mb-3 flex items-center justify-between">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Ler nota fiscal
+                  </h4>
+                  {scanning && (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-slate-500">
+                      <Loader2 className="h-3 w-3 animate-spin" /> lendo…
+                    </span>
+                  )}
+                </div>
 
-                <div className="mt-5">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Últimas notas lidas pela IA
+                <input
+                  ref={scanCameraRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    handleScanFiles(e.target.files);
+                    if (scanCameraRef.current) scanCameraRef.current.value = "";
+                  }}
+                />
+                <input
+                  ref={scanUploadRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    handleScanFiles(e.target.files);
+                    if (scanUploadRef.current) scanUploadRef.current.value = "";
+                  }}
+                />
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => scanCameraRef.current?.click()}
+                    disabled={scanning}
+                    className="flex-1 h-9 gap-2"
+                  >
+                    <Camera className="h-4 w-4" />
+                    Tirar foto
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => scanUploadRef.current?.click()}
+                    disabled={scanning}
+                    className="flex-1 h-9 gap-2"
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                    Enviar imagem
+                  </Button>
+                </div>
+
+                {scanMsg && (
+                  <div
+                    className={`mt-3 rounded-md px-3 py-2 text-xs ${
+                      scanMsg.ok
+                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                        : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                    }`}
+                  >
+                    {scanMsg.text}
+                  </div>
+                )}
+
+                <div className="mt-4">
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                    Últimas notas lidas
                   </p>
-                  <ul className="space-y-2">
-                    <li className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-center text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-950">
-                      <CheckCircle2 className="mx-auto mb-1 h-4 w-4 text-slate-300" />
-                      Nenhuma nota processada ainda
-                    </li>
-                  </ul>
+                  {scannedNotes.length === 0 ? (
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                      Nenhuma nota processada ainda.
+                    </p>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {scannedNotes.map((n) => (
+                        <li
+                          key={n.at}
+                          className="flex items-center gap-2 rounded-md border border-slate-100 bg-slate-50/60 px-2 py-1.5 dark:border-slate-800 dark:bg-slate-950/60"
+                        >
+                          <img
+                            src={n.preview}
+                            alt=""
+                            className="h-8 w-8 rounded object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                          />
+                          <span className="flex-1 truncate text-xs text-slate-600 dark:text-slate-400">
+                            {n.summary}
+                          </span>
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
 
-              <div className="p-5">
-                <h4 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-300">
-                  Apuração de Sobras
+              <div className="p-4">
+                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Apuração de sobras
                 </h4>
                 <Tabs defaultValue="refrigerados">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="refrigerados">Refrigerados</TabsTrigger>
-                    <TabsTrigger value="secos">Secos</TabsTrigger>
+                  <TabsList className="grid w-full grid-cols-2 h-8">
+                    <TabsTrigger value="refrigerados" className="text-xs">Refrigerados</TabsTrigger>
+                    <TabsTrigger value="secos" className="text-xs">Secos</TabsTrigger>
                   </TabsList>
 
                   {[
                     { key: "refrigerados", list: refrigerados },
                     { key: "secos", list: secos },
                   ].map((tab) => (
-                    <TabsContent key={tab.key} value={tab.key} className="mt-4">
-                      <div className="space-y-2">
+                    <TabsContent key={tab.key} value={tab.key} className="mt-3">
+                      <div className="space-y-1.5">
                         {tab.list.map((item) => (
                           <div
                             key={item.nome}
-                            className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950"
+                            className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-950"
                           >
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            <span className="text-xs text-slate-600 dark:text-slate-400">
                               {item.nome}
                             </span>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
                               <Input
                                 type="number"
                                 placeholder="0.0"
@@ -692,9 +843,9 @@ function Dashboard() {
                                     [item.nome]: e.target.value,
                                   }))
                                 }
-                                className="h-9 w-24 text-right"
+                                className="h-8 w-20 text-right text-xs"
                               />
-                              <span className="w-8 text-xs text-slate-500 dark:text-slate-400">
+                              <span className="w-6 text-[11px] text-slate-400 dark:text-slate-500">
                                 {item.unidade}
                               </span>
                             </div>
@@ -705,8 +856,8 @@ function Dashboard() {
                   ))}
                 </Tabs>
 
-                <Button className="mt-5 w-full bg-blue-600 text-white hover:bg-blue-700">
-                  <Calculator className="mr-2 h-4 w-4" />
+                <Button variant="outline" size="sm" className="mt-4 w-full h-8 gap-2 text-xs">
+                  <Calculator className="h-3.5 w-3.5" />
                   Calcular CMV com IA
                 </Button>
               </div>
