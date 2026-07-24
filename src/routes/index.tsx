@@ -277,6 +277,76 @@ function Dashboard() {
     setWeek(data);
   }
 
+  async function handleScanFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const list = Array.from(files).slice(0, 3);
+    setScanMsg(null);
+    setScanning(true);
+    try {
+      const dataUrls = await Promise.all(
+        list.map(
+          (f) =>
+            new Promise<string>((resolve, reject) => {
+              if (!f.type.startsWith("image/")) {
+                reject(new Error("Apenas imagens."));
+                return;
+              }
+              if (f.size > 8 * 1024 * 1024) {
+                reject(new Error(`"${f.name}" passa de 8MB.`));
+                return;
+              }
+              const r = new FileReader();
+              r.onload = () => resolve(String(r.result));
+              r.onerror = () => reject(r.error);
+              r.readAsDataURL(f);
+            }),
+        ),
+      );
+      const res = await chat({
+        data: {
+          messages: [
+            {
+              role: "user",
+              content:
+                "Leia esta(s) nota(s) fiscal(is) / comprovante(s) e extraia os valores para a DRE (embalagens, CMV, taxa de cartão, fixos, imposto pago etc.). Só use números visíveis na imagem.",
+              images: dataUrls,
+            },
+          ],
+          currentWeek: week,
+          periodo: rangeLabel,
+        },
+      });
+      let patch: WeekPatch = {};
+      try {
+        patch = JSON.parse(res.patchJson) as WeekPatch;
+      } catch {
+        patch = {};
+      }
+      const hasPatch =
+        !!patch &&
+        Object.keys(patch).some((k) => {
+          const v = (patch as Record<string, unknown>)[k];
+          return Array.isArray(v) ? v.length > 0 : v !== undefined;
+        });
+      if (hasPatch) {
+        const updated = applyPatch(week, patch);
+        saveWeek(key, updated);
+        setWeek(updated);
+      }
+      setScannedNotes((n) =>
+        [
+          { preview: dataUrls[0], summary: res.reply || (hasPatch ? "Nota lida" : "Sem dados"), at: Date.now() },
+          ...n,
+        ].slice(0, 5),
+      );
+      setScanMsg({ ok: hasPatch, text: hasPatch ? "DRE atualizada com a nota." : res.reply || "Nada extraído." });
+    } catch (e) {
+      setScanMsg({ ok: false, text: e instanceof Error ? e.message : "Erro ao processar a nota." });
+    } finally {
+      setScanning(false);
+    }
+  }
+
   const revenueChart = [
     {
       periodo: rangeLabel,
