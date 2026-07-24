@@ -244,6 +244,12 @@ function Dashboard() {
   const [week, setWeek] = useState<WeekData>(EMPTY_WEEK);
   const [editOpen, setEditOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanMsg, setScanMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [scannedNotes, setScannedNotes] = useState<{ preview: string; summary: string; at: number }[]>([]);
+  const scanUploadRef = useRef<HTMLInputElement>(null);
+  const scanCameraRef = useRef<HTMLInputElement>(null);
+  const chat = useServerFn(chatCerebro);
 
   const key = weekKey(range?.from);
 
