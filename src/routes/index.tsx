@@ -652,8 +652,11 @@ function Dashboard() {
                 {dre.canais.length === 0 && <SubRow label="—" value={currency(0)} />}
               </DreRow>
               <DreRow label="Custos Variáveis" value={`- ${currency(dre.custosVariaveis)}`}>
-                <SubRow label="CMV (Insumos)" value={`- ${currency(dre.cmv)}`} />
-                <SubRow label="Embalagens" value={`- ${currency(dre.embalagens)}`} />
+                <SubRow label="CMV Contábil (insumos + embalagens)" value={`- ${currency(dre.cmvContabil)} · ${dre.cmvContabilPct.toFixed(1)}% da receita bruta`} />
+                <SubRow label="  ↳ Insumos" value={`- ${currency(dre.cmv)}`} />
+                <SubRow label="  ↳ Embalagens" value={`- ${currency(dre.embalagens)}`} />
+                <SubRow label="CMV Financeiro (sobre receita líquida)" value={`${dre.cmvFinanceiroPct.toFixed(1)}% · líq. ${currency(dre.receitaLiquida)}`} />
+                <SubRow label={`CMV Real (após estoque${dre.estoqueValor > 0 ? ` de ${currency(dre.estoqueValor)}` : ""})`} value={`- ${currency(dre.cmvReal)} · ${dre.cmvRealPct.toFixed(1)}%`} />
                 <SubRow label="Frete / entregador" value={`- ${currency(dre.freteEntregador)}`} />
                 <SubRow label="Taxas / comissões dos apps" value={`- ${currency(dre.taxasMarketplace)}`} />
                 <SubRow label="Descontos concedidos" value={`- ${currency(dre.descontosTotal)}`} />
