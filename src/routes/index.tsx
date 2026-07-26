@@ -369,10 +369,11 @@ function Dashboard() {
           const v = (patch as Record<string, unknown>)[k];
           return Array.isArray(v) ? v.length > 0 : v !== undefined;
         });
-      if (hasPatch) {
+      if (hasPatch && !isAggregated) {
         const updated = applyPatch(week, patch);
         saveWeek(key, updated);
         setWeek(updated);
+        setHistoryTick((t) => t + 1);
       }
       setScannedNotes((n) =>
         [
