@@ -332,3 +332,124 @@ export function computeDre(w: WeekData): DreComputed {
     canais,
   };
 }
+
+// ---------- Histórico e agregação multi-semana ----------
+
+export type SavedWeekEntry = {
+  key: string;
+  startDate: Date;
+  data: WeekData;
+};
+
+const KEY_PREFIX = "dre-week-";
+
+export function listSavedWeeks(): SavedWeekEntry[] {
+  if (typeof window === "undefined") return [];
+  const out: SavedWeekEntry[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k || !k.startsWith(KEY_PREFIX)) continue;
+    const iso = k.slice(KEY_PREFIX.length);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) continue;
+    try {
+      const startDate = parseISO(iso);
+      const data = loadWeek(k);
+      out.push({ key: k, startDate, data });
+    } catch {
+      // ignore
+    }
+  }
+  return out.sort((a, b) => b.startDate.getTime() - a.startDate.getTime());
+}
+
+export function deleteWeek(key: string) {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(key);
+}
+
+function mergeChannelsSum(all: ChannelRow[][]): ChannelRow[] {
+  const map = new Map<string, ChannelRow>();
+  for (const list of all) {
+    for (const c of list) {
+      const existing = map.get(c.nome);
+      if (existing) {
+        existing.receita += c.receita || 0;
+        existing.pedidos += c.pedidos || 0;
+        existing.taxas += c.taxas || 0;
+        existing.descontos += c.descontos || 0;
+      } else {
+        map.set(c.nome, { ...c });
+      }
+    }
+  }
+  // Preserve default order
+  const order = DEFAULT_CHANNELS.map((c) => c.nome);
+  return [...map.values()].sort(
+    (a, b) => order.indexOf(a.nome) - order.indexOf(b.nome),
+  );
+}
+
+function mergeLineItemsSum(all: LineItem[][]): LineItem[] {
+  const map = new Map<string, number>();
+  for (const list of all) {
+    for (const item of list) {
+      const k = item.label.toLowerCase();
+      map.set(k, (map.get(k) || 0) + (item.valor || 0));
+      // preserve original casing
+    }
+  }
+  // Preserve first-seen label casing
+  const labelCase = new Map<string, string>();
+  for (const list of all) {
+    for (const item of list) {
+      const k = item.label.toLowerCase();
+      if (!labelCase.has(k)) labelCase.set(k, item.label);
+    }
+  }
+  return [...map.entries()].map(([k, valor]) => ({
+    label: labelCase.get(k) || k,
+    valor,
+  }));
+}
+
+export function aggregateWeeks(weeks: WeekData[]): WeekData {
+  if (weeks.length === 0) return EMPTY_WEEK;
+  if (weeks.length === 1) return weeks[0];
+  const impostoPagoValor = weeks.reduce(
+    (s, w) => s + (w.impostoPago ? w.impostoPagoValor || 0 : 0),
+    0,
+  );
+  const anyPago = weeks.some((w) => w.impostoPago);
+  // alíquota: usa a mais frequente / última não-zero
+  const aliquota =
+    weeks.find((w) => w.simplesAliquota > 0)?.simplesAliquota ??
+    weeks[0].simplesAliquota ??
+    0;
+  const totalOverride = weeks.reduce(
+    (s, w) => s + (w.totalPedidosOverride || 0),
+    0,
+  );
+  return {
+    channels: mergeChannelsSum(weeks.map((w) => w.channels)),
+    taxaPagamento: weeks.reduce((s, w) => s + (w.taxaPagamento || 0), 0),
+    embalagens: weeks.reduce((s, w) => s + (w.embalagens || 0), 0),
+    freteEntregador: weeks.reduce((s, w) => s + (w.freteEntregador || 0), 0),
+    cmv: weeks.reduce((s, w) => s + (w.cmv || 0), 0),
+    fixos: mergeLineItemsSum(weeks.map((w) => w.fixos)),
+    marketing: mergeLineItemsSum(weeks.map((w) => w.marketing)),
+    promocoes: mergeLineItemsSum(weeks.map((w) => w.promocoes)),
+    totalPedidosOverride: totalOverride > 0 ? totalOverride : undefined,
+    simplesAliquota: aliquota,
+    impostoPago: anyPago,
+    impostoPagoValor: impostoPagoValor > 0 ? impostoPagoValor : undefined,
+  };
+}
+
+export function weeksInRange(from: Date, to: Date): SavedWeekEntry[] {
+  const all = listSavedWeeks();
+  const start = from <= to ? from : to;
+  const end = to >= from ? to : from;
+  return all.filter((e) =>
+    isWithinInterval(e.startDate, { start, end }),
+  );
+}
