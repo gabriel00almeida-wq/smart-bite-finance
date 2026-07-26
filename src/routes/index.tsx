@@ -353,6 +353,7 @@ function Dashboard() {
     if (typeof window !== "undefined" && !window.confirm("Excluir esta apuração?")) return;
     deleteWeek(k);
     setHistoryTick((t) => t + 1);
+  }
 
   function handleDeleteEntry(weekKey: string, entryId: string) {
     removeLedgerEntry(weekKey);
