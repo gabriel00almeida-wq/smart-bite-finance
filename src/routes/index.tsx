@@ -917,6 +917,94 @@ function Dashboard() {
               </div>
             </div>
           </section>
+
+          {/* Histórico de lançamentos */}
+          <section className="rounded-xl bg-white shadow-sm ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <History className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                    Histórico de lançamentos
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {savedWeeks.length} {savedWeeks.length === 1 ? "semana salva" : "semanas salvas"} · clique para abrir
+                  </p>
+                </div>
+              </div>
+            </div>
+            {savedWeeks.length === 0 ? (
+              <div className="px-5 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                Nenhuma apuração salva ainda. Preencha uma semana em <strong>Editar dados</strong> para começar.
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                <div className="hidden grid-cols-12 px-5 py-2 text-[11px] font-medium uppercase tracking-wide text-slate-400 sm:grid dark:text-slate-500">
+                  <div className="col-span-4">Semana</div>
+                  <div className="col-span-2 text-right">Receita</div>
+                  <div className="col-span-2 text-right">Pedidos</div>
+                  <div className="col-span-2 text-right">Ticket</div>
+                  <div className="col-span-1 text-right">Lucro</div>
+                  <div className="col-span-1" />
+                </div>
+                {savedWeeks.map((entry) => {
+                  const d = computeDre(entry.data);
+                  const end = addDays(entry.startDate, 6);
+                  const label = `${format(entry.startDate, "dd MMM", { locale: ptBR })} → ${format(end, "dd MMM yyyy", { locale: ptBR })}`;
+                  const isCurrent = entry.key === key && !isAggregated;
+                  return (
+                    <div
+                      key={entry.key}
+                      className={`grid grid-cols-12 items-center gap-y-1 px-5 py-3 text-sm transition hover:bg-slate-50/70 dark:hover:bg-slate-950/60 ${
+                        isCurrent ? "bg-emerald-50/40 dark:bg-emerald-950/20" : ""
+                      }`}
+                    >
+                      <button
+                        onClick={() => handleSelectWeek(entry)}
+                        className="col-span-10 flex flex-col text-left sm:col-span-4"
+                      >
+                        <span className="font-medium text-slate-800 dark:text-slate-200">{label}</span>
+                        {isCurrent && (
+                          <span className="text-[10px] font-medium uppercase text-emerald-600 dark:text-emerald-400">
+                            selecionada
+                          </span>
+                        )}
+                      </button>
+                      <div className="col-span-6 text-right font-mono tabular-nums text-slate-700 sm:col-span-2 dark:text-slate-300">
+                        {currency(d.receitaBruta)}
+                      </div>
+                      <div className="col-span-6 text-right font-mono tabular-nums text-slate-600 sm:col-span-2 dark:text-slate-400">
+                        {d.totalPedidos}
+                      </div>
+                      <div className="col-span-6 text-right font-mono tabular-nums text-slate-600 sm:col-span-2 dark:text-slate-400">
+                        {currency(d.ticketMedio)}
+                      </div>
+                      <div
+                        className={`col-span-4 text-right font-mono tabular-nums sm:col-span-1 ${
+                          d.lucroLiquido >= 0
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-red-600 dark:text-red-400"
+                        }`}
+                      >
+                        {currency(d.lucroLiquido)}
+                      </div>
+                      <div className="col-span-2 flex justify-end sm:col-span-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-slate-400 hover:text-red-500"
+                          onClick={() => handleDeleteWeek(entry.key)}
+                          title="Excluir apuração"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         </main>
       </div>
 
