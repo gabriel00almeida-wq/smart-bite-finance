@@ -223,13 +223,7 @@ export function applyPatch(w: WeekData, patch: WeekPatch): WeekData {
   if (patch.impostoComprovanteUrl !== undefined)
     next.impostoComprovanteUrl = patch.impostoComprovanteUrl;
   if (patch.impostoPagoEm !== undefined) next.impostoPagoEm = patch.impostoPagoEm;
-  if (patch.estoqueValor !== undefined) {
-    next.estoqueValor = Math.max(0, patch.estoqueValor);
-    newEntries.push({
-      id: mkId(), at, source: src, categoria: "estoque",
-      label: "Estoque final (abatimento do CMV Real)", valor: Math.max(0, patch.estoqueValor), note: meta.note,
-    });
-  }
+  if (patch.estoqueValor !== undefined) next.estoqueValor = Math.max(0, patch.estoqueValor);
   return next;
 }
 
@@ -367,7 +361,13 @@ export function applyChatPatch(
   if (patch.impostoComprovanteUrl !== undefined)
     next.impostoComprovanteUrl = patch.impostoComprovanteUrl;
   if (patch.impostoPagoEm !== undefined) next.impostoPagoEm = patch.impostoPagoEm;
-  if (patch.estoqueValor !== undefined) next.estoqueValor = patch.estoqueValor;
+  if (patch.estoqueValor !== undefined) {
+    next.estoqueValor = Math.max(0, patch.estoqueValor);
+    newEntries.push({
+      id: mkId(), at, source: src, categoria: "estoque",
+      label: "Estoque final (abatimento do CMV Real)", valor: Math.max(0, patch.estoqueValor), note: meta.note,
+    });
+  }
 
   next.ledger = [...(next.ledger ?? []), ...newEntries];
   return next;
