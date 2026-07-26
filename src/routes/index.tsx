@@ -29,6 +29,9 @@ import {
   Camera,
   ImagePlus,
   X,
+  History,
+  Trash2,
+  Layers,
 } from "lucide-react";
 import {
   BarChart,
