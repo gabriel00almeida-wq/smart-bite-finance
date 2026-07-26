@@ -26,6 +26,7 @@ export type LedgerCategory =
   | "canal-taxa"
   | "canal-desconto"
   | "imposto"
+  | "estoque"
   | "outro";
 
 export type WeekEntry = {
@@ -222,7 +223,13 @@ export function applyPatch(w: WeekData, patch: WeekPatch): WeekData {
   if (patch.impostoComprovanteUrl !== undefined)
     next.impostoComprovanteUrl = patch.impostoComprovanteUrl;
   if (patch.impostoPagoEm !== undefined) next.impostoPagoEm = patch.impostoPagoEm;
-  if (patch.estoqueValor !== undefined) next.estoqueValor = patch.estoqueValor;
+  if (patch.estoqueValor !== undefined) {
+    next.estoqueValor = Math.max(0, patch.estoqueValor);
+    newEntries.push({
+      id: mkId(), at, source: src, categoria: "estoque",
+      label: "Estoque final (abatimento do CMV Real)", valor: Math.max(0, patch.estoqueValor), note: meta.note,
+    });
+  }
   return next;
 }
 
@@ -429,6 +436,9 @@ export function removeLedgerEntry(w: WeekData, entryId: string): WeekData {
     case "imposto":
       next.impostoPagoValor = Math.max(0, (next.impostoPagoValor || 0) - v);
       if ((next.impostoPagoValor ?? 0) === 0) next.impostoPago = false;
+      break;
+    case "estoque":
+      next.estoqueValor = 0;
       break;
   }
   return next;
@@ -665,7 +675,9 @@ export function aggregateWeeks(weeks: WeekData[]): WeekData {
     simplesAliquota: aliquota,
     impostoPago: anyPago,
     impostoPagoValor: impostoPagoValor > 0 ? impostoPagoValor : undefined,
-    estoqueValor: weeks.reduce((s, w) => s + (w.estoqueValor || 0), 0),
+    // Estoque é uma fotografia de fechamento, não um fluxo: no consolidado,
+    // usa somente o saldo da semana final (a lista chega da mais recente para a mais antiga).
+    estoqueValor: weeks[0]?.estoqueValor || 0,
     ledger,
   };
 }

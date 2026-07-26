@@ -26,7 +26,7 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   week: WeekData;
-  onWeekChange: (w: WeekData) => void;
+  onWeekChange: (w: WeekData, patch: WeekPatch) => boolean;
   periodLabel: string;
 };
 
@@ -123,6 +123,7 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
           const v = (patch as Record<string, unknown>)[k];
           return Array.isArray(v) ? v.length > 0 : v !== undefined;
         });
+      let patchApplied = false;
       if (hasPatch) {
         if (patch.impostoPago && images.length > 0 && !patch.impostoComprovanteUrl) {
           patch.impostoComprovanteUrl = images[0];
@@ -132,14 +133,17 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
           source: images.length > 0 ? "nota" : "chat",
           note: clean || "(imagem)",
         });
-        onWeekChange(updated);
+        patchApplied = onWeekChange(updated, patch);
+        if (!patchApplied) {
+          setError("No período consolidado, selecione uma única semana para registrar este tipo de lançamento.");
+        }
       }
       setMessages([
         ...next,
         {
           role: "assistant",
           content: res.reply || "Ok.",
-          patchApplied: hasPatch,
+          patchApplied,
         },
       ]);
     } catch (e) {

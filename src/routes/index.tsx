@@ -245,6 +245,7 @@ function LedgerRow({ entry, onDelete }: { entry: WeekEntry; onDelete: () => void
     "canal-taxa": "Taxa app",
     "canal-desconto": "Desconto",
     imposto: "Imposto",
+    estoque: "Estoque final",
     outro: "",
   };
   const isCount = entry.categoria === "canal-pedidos";
@@ -342,11 +343,23 @@ function Dashboard() {
     setHistoryTick((t) => t + 1);
   }
 
-  function handleWeekChangeFromChat(data: WeekData) {
-    if (isAggregated) return;
+  function handleWeekChangeFromChat(data: WeekData, patch: WeekPatch): boolean {
+    if (isAggregated) {
+      if (patch.estoqueValor === undefined || matchedWeeks.length === 0) return false;
+      const closingWeek = matchedWeeks.reduce((latest, entry) =>
+        entry.startDate > latest.startDate ? entry : latest,
+      );
+      const updatedClosingWeek = applyPatch(closingWeek.data, {
+        estoqueValor: patch.estoqueValor,
+      });
+      saveWeek(closingWeek.key, updatedClosingWeek);
+      setHistoryTick((t) => t + 1);
+      return true;
+    }
     saveWeek(key, data);
     setWeek(data);
     setHistoryTick((t) => t + 1);
+    return true;
   }
 
   function handleDeleteWeek(k: string) {
