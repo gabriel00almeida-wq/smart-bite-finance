@@ -260,14 +260,30 @@ function Dashboard() {
   const chat = useServerFn(chatCerebro);
 
   const key = weekKey(range?.from);
+  const [historyTick, setHistoryTick] = useState(0);
 
-  // Load stored data whenever the week changes
+  // Semanas salvas dentro do range selecionado
+  const matchedWeeks: SavedWeekEntry[] = useMemo(() => {
+    if (!range?.from || !range?.to) return [];
+    return weeksInRange(range.from, range.to);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range?.from?.getTime(), range?.to?.getTime(), historyTick]);
+
+  const isAggregated = matchedWeeks.length > 1;
+
+  // Load stored data whenever the week/range changes
   useEffect(() => {
-    setWeek(loadWeek(key));
-  }, [key]);
+    if (isAggregated) {
+      setWeek(aggregateWeeks(matchedWeeks.map((m) => m.data)));
+    } else {
+      setWeek(loadWeek(key));
+    }
+  }, [key, isAggregated, matchedWeeks]);
 
   const dre = useMemo(() => computeDre(week), [week]);
   const hasData = dre.receitaBruta > 0;
+
+  const savedWeeks = useMemo(() => listSavedWeeks(), [historyTick]);
 
   const rangeLabel = range?.from
     ? range.to
@@ -276,13 +292,30 @@ function Dashboard() {
     : "Escolher período";
 
   function handleSave(data: WeekData) {
+    if (isAggregated) return;
     saveWeek(key, data);
     setWeek(data);
+    setHistoryTick((t) => t + 1);
   }
 
   function handleWeekChangeFromChat(data: WeekData) {
+    if (isAggregated) return;
     saveWeek(key, data);
     setWeek(data);
+    setHistoryTick((t) => t + 1);
+  }
+
+  function handleDeleteWeek(k: string) {
+    if (typeof window !== "undefined" && !window.confirm("Excluir esta apuração?")) return;
+    deleteWeek(k);
+    setHistoryTick((t) => t + 1);
+  }
+
+  function handleSelectWeek(entry: SavedWeekEntry) {
+    setRange({
+      from: entry.startDate,
+      to: endOfWeek(entry.startDate, { weekStartsOn: 1 }),
+    });
   }
 
   async function handleScanFiles(files: FileList | null) {
