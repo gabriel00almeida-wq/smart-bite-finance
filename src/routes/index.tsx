@@ -914,71 +914,99 @@ function Dashboard() {
                 Nenhuma apuração salva ainda. Preencha uma semana em <strong>Editar dados</strong> para começar.
               </div>
             ) : (
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                <div className="hidden grid-cols-12 px-5 py-2 text-[11px] font-medium uppercase tracking-wide text-slate-400 sm:grid dark:text-slate-500">
-                  <div className="col-span-4">Semana</div>
-                  <div className="col-span-2 text-right">Receita</div>
-                  <div className="col-span-2 text-right">Pedidos</div>
-                  <div className="col-span-2 text-right">Ticket</div>
-                  <div className="col-span-1 text-right">Lucro</div>
-                  <div className="col-span-1" />
-                </div>
+              <Accordion type="multiple" className="divide-y divide-slate-100 dark:divide-slate-800">
                 {savedWeeks.map((entry) => {
                   const d = computeDre(entry.data);
                   const end = addDays(entry.startDate, 6);
                   const label = `${format(entry.startDate, "dd MMM", { locale: ptBR })} → ${format(end, "dd MMM yyyy", { locale: ptBR })}`;
                   const isCurrent = entry.key === key && !isAggregated;
+                  const ledger = (entry.data.ledger ?? []).slice().sort((a, b) => a.at - b.at);
+                  const ledgerTotal = ledger.reduce((s, e) => s + (["canal-pedidos"].includes(e.categoria) ? 0 : e.valor), 0);
                   return (
-                    <div
-                      key={entry.key}
-                      className={`grid grid-cols-12 items-center gap-y-1 px-5 py-3 text-sm transition hover:bg-slate-50/70 dark:hover:bg-slate-950/60 ${
-                        isCurrent ? "bg-emerald-50/40 dark:bg-emerald-950/20" : ""
-                      }`}
-                    >
-                      <button
-                        onClick={() => handleSelectWeek(entry)}
-                        className="col-span-10 flex flex-col text-left sm:col-span-4"
-                      >
-                        <span className="font-medium text-slate-800 dark:text-slate-200">{label}</span>
-                        {isCurrent && (
-                          <span className="text-[10px] font-medium uppercase text-emerald-600 dark:text-emerald-400">
-                            selecionada
-                          </span>
-                        )}
-                      </button>
-                      <div className="col-span-6 text-right font-mono tabular-nums text-slate-700 sm:col-span-2 dark:text-slate-300">
-                        {currency(d.receitaBruta)}
-                      </div>
-                      <div className="col-span-6 text-right font-mono tabular-nums text-slate-600 sm:col-span-2 dark:text-slate-400">
-                        {d.totalPedidos}
-                      </div>
-                      <div className="col-span-6 text-right font-mono tabular-nums text-slate-600 sm:col-span-2 dark:text-slate-400">
-                        {currency(d.ticketMedio)}
-                      </div>
+                    <AccordionItem key={entry.key} value={entry.key} className="border-0">
                       <div
-                        className={`col-span-4 text-right font-mono tabular-nums sm:col-span-1 ${
-                          d.lucroLiquido >= 0
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-red-600 dark:text-red-400"
+                        className={`flex items-center gap-2 px-5 ${
+                          isCurrent ? "bg-emerald-50/40 dark:bg-emerald-950/20" : ""
                         }`}
                       >
-                        {currency(d.lucroLiquido)}
+                        <AccordionTrigger className="flex-1 py-3 hover:no-underline">
+                          <div className="grid w-full grid-cols-12 items-center gap-y-1 pr-2 text-left text-sm">
+                            <div className="col-span-12 flex flex-col sm:col-span-4">
+                              <span className="font-medium text-slate-800 dark:text-slate-200">{label}</span>
+                              <span className="text-[10px] uppercase text-slate-400">
+                                {ledger.length} {ledger.length === 1 ? "lançamento" : "lançamentos"}
+                                {isCurrent && " · selecionada"}
+                              </span>
+                            </div>
+                            <div className="col-span-6 text-right font-mono tabular-nums text-slate-700 sm:col-span-2 dark:text-slate-300">
+                              {currency(d.receitaBruta)}
+                            </div>
+                            <div className="col-span-6 text-right font-mono tabular-nums text-slate-600 sm:col-span-2 dark:text-slate-400">
+                              {d.totalPedidos} ped.
+                            </div>
+                            <div className="col-span-6 text-right font-mono tabular-nums text-slate-600 sm:col-span-2 dark:text-slate-400">
+                              {currency(d.ticketMedio)}
+                            </div>
+                            <div
+                              className={`col-span-6 text-right font-mono tabular-nums sm:col-span-2 ${
+                                d.lucroLiquido >= 0
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-red-600 dark:text-red-400"
+                              }`}
+                            >
+                              {currency(d.lucroLiquido)}
+                            </div>
+                          </div>
+                        </AccordionTrigger>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs text-slate-500 hover:text-indigo-600"
+                            onClick={() => handleSelectWeek(entry)}
+                            title="Selecionar no calendário"
+                          >
+                            abrir
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-slate-400 hover:text-red-500"
+                            onClick={() => handleDeleteWeek(entry.key)}
+                            title="Excluir apuração"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="col-span-2 flex justify-end sm:col-span-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-slate-400 hover:text-red-500"
-                          onClick={() => handleDeleteWeek(entry.key)}
-                          title="Excluir apuração"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
+                      <AccordionContent className="bg-slate-50/60 px-5 pb-4 pt-1 dark:bg-slate-950/40">
+                        {ledger.length === 0 ? (
+                          <p className="py-3 text-xs text-slate-500 dark:text-slate-400">
+                            Sem lançamentos individuais registrados nesta semana. Os dados foram
+                            inseridos direto pelo formulário "Editar dados".
+                          </p>
+                        ) : (
+                          <div className="divide-y divide-slate-200/70 dark:divide-slate-800">
+                            {ledger.map((e) => (
+                              <LedgerRow
+                                key={e.id}
+                                entry={e}
+                                onDelete={() => handleDeleteEntry(entry.key, e.id)}
+                              />
+                            ))}
+                            <div className="flex items-center justify-between py-2.5 pt-3 text-sm font-semibold">
+                              <span className="text-slate-800 dark:text-slate-200">Total lançado</span>
+                              <span className="font-mono tabular-nums text-slate-900 dark:text-white">
+                                {currency(ledgerTotal)}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </AccordionContent>
+                    </AccordionItem>
                   );
                 })}
-              </div>
+              </Accordion>
             )}
           </section>
         </main>
