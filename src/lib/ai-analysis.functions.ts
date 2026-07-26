@@ -122,7 +122,8 @@ Você DEVE responder SEMPRE em JSON puro, sem markdown, sem cercas, no formato:
     "promocoes": [{ "label": string, "valor": number }],
     "simplesAliquota"?: number,
     "impostoPago"?: boolean,
-    "impostoPagoValor"?: number
+    "impostoPagoValor"?: number,
+    "estoqueValor"?: number
   }
 }
 
@@ -138,6 +139,7 @@ Regras do patch:
 - Se o usuário só quer conversar, devolva "patch": {}.
 - NUNCA invente dados.
 - Se o usuário enviar IMAGENS (prints de painel, notas fiscais, comprovantes), LEIA os números visíveis e extraia. Se for comprovante de DAS/imposto, marque impostoPago: true.
+- SOBRA DE ESTOQUE: se o usuário disser algo como "sobrou R$ 500 em estoque", "ficou 300 de insumo no estoque", "inventário final: 800", "estoque de fechamento 1200" → use "estoqueValor" com o valor em R$. Esse campo é o VALOR TOTAL que ficou em estoque na semana (substitui o anterior, não soma). Ele abate no CMV Real.
 
 Exemplos:
 Usuário: "meu Simples é 6%"
