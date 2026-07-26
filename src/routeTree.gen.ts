@@ -9,8 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as CustosFixosRouteImport } from './routes/custos-fixos'
 import { Route as IndexRouteImport } from './routes/index'
 
+const CustosFixosRoute = CustosFixosRouteImport.update({
+  id: '/custos-fixos',
+  path: '/custos-fixos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +25,39 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/custos-fixos': typeof CustosFixosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/custos-fixos': typeof CustosFixosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/custos-fixos': typeof CustosFixosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/custos-fixos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/custos-fixos'
+  id: '__root__' | '/' | '/custos-fixos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CustosFixosRoute: typeof CustosFixosRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/custos-fixos': {
+      id: '/custos-fixos'
+      path: '/custos-fixos'
+      fullPath: '/custos-fixos'
+      preLoaderRoute: typeof CustosFixosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,6 +70,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CustosFixosRoute: CustosFixosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useServerFn } from "@tanstack/react-start";
 import { analyzeDre, chatCerebro } from "@/lib/ai-analysis.functions";
 import {
-  applyPatch,
+  applyChatPatch,
   computeDre,
   type WeekData,
   type WeekPatch,
