@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { LineItem, WeekData } from "@/lib/dre-store";
-import { SAMPLE_WEEK } from "@/lib/dre-store";
+import { EMPTY_WEEK } from "@/lib/dre-store";
 
 type Props = {
   open: boolean;
