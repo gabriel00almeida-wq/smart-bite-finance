@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { format, startOfWeek, endOfWeek } from "date-fns";
+import { format, startOfWeek, endOfWeek, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { DateRange } from "react-day-picker";
 import {
@@ -29,6 +29,9 @@ import {
   Camera,
   ImagePlus,
   X,
+  History,
+  Trash2,
+  Layers,
 } from "lucide-react";
 import {
   BarChart,
@@ -69,7 +72,12 @@ import {
   saveWeek,
   weekKey,
   EMPTY_WEEK,
+  listSavedWeeks,
+  weeksInRange,
+  aggregateWeeks,
+  deleteWeek,
   type WeekData,
+  type SavedWeekEntry,
 } from "@/lib/dre-store";
 import { applyPatch, type WeekPatch } from "@/lib/dre-store";
 import { EditWeekSheet } from "@/components/EditWeekSheet";
@@ -252,14 +260,30 @@ function Dashboard() {
   const chat = useServerFn(chatCerebro);
 
   const key = weekKey(range?.from);
+  const [historyTick, setHistoryTick] = useState(0);
 
-  // Load stored data whenever the week changes
+  // Semanas salvas dentro do range selecionado
+  const matchedWeeks: SavedWeekEntry[] = useMemo(() => {
+    if (!range?.from || !range?.to) return [];
+    return weeksInRange(range.from, range.to);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range?.from?.getTime(), range?.to?.getTime(), historyTick]);
+
+  const isAggregated = matchedWeeks.length > 1;
+
+  // Load stored data whenever the week/range changes
   useEffect(() => {
-    setWeek(loadWeek(key));
-  }, [key]);
+    if (isAggregated) {
+      setWeek(aggregateWeeks(matchedWeeks.map((m) => m.data)));
+    } else {
+      setWeek(loadWeek(key));
+    }
+  }, [key, isAggregated, matchedWeeks]);
 
   const dre = useMemo(() => computeDre(week), [week]);
   const hasData = dre.receitaBruta > 0;
+
+  const savedWeeks = useMemo(() => listSavedWeeks(), [historyTick]);
 
   const rangeLabel = range?.from
     ? range.to
@@ -268,13 +292,30 @@ function Dashboard() {
     : "Escolher período";
 
   function handleSave(data: WeekData) {
+    if (isAggregated) return;
     saveWeek(key, data);
     setWeek(data);
+    setHistoryTick((t) => t + 1);
   }
 
   function handleWeekChangeFromChat(data: WeekData) {
+    if (isAggregated) return;
     saveWeek(key, data);
     setWeek(data);
+    setHistoryTick((t) => t + 1);
+  }
+
+  function handleDeleteWeek(k: string) {
+    if (typeof window !== "undefined" && !window.confirm("Excluir esta apuração?")) return;
+    deleteWeek(k);
+    setHistoryTick((t) => t + 1);
+  }
+
+  function handleSelectWeek(entry: SavedWeekEntry) {
+    setRange({
+      from: entry.startDate,
+      to: endOfWeek(entry.startDate, { weekStartsOn: 1 }),
+    });
   }
 
   async function handleScanFiles(files: FileList | null) {
@@ -328,10 +369,11 @@ function Dashboard() {
           const v = (patch as Record<string, unknown>)[k];
           return Array.isArray(v) ? v.length > 0 : v !== undefined;
         });
-      if (hasPatch) {
+      if (hasPatch && !isAggregated) {
         const updated = applyPatch(week, patch);
         saveWeek(key, updated);
         setWeek(updated);
+        setHistoryTick((t) => t + 1);
       }
       setScannedNotes((n) =>
         [
@@ -428,8 +470,10 @@ function Dashboard() {
             </Popover>
 
             <Button
-              className="h-9 gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
+              className="h-9 gap-2 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
               onClick={() => setEditOpen(true)}
+              disabled={isAggregated}
+              title={isAggregated ? "Selecione uma única semana para editar" : "Editar dados"}
             >
               <Pencil className="h-4 w-4" />
               <span className="hidden sm:inline text-xs">Editar dados</span>
@@ -463,6 +507,16 @@ function Dashboard() {
         </header>
 
         <main className="space-y-6 p-4 sm:p-6">
+          {isAggregated && (
+            <div className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-300">
+              <Layers className="h-4 w-4" />
+              <span>
+                Visão consolidada de <strong>{matchedWeeks.length} semanas</strong> ({rangeLabel}).
+                Os valores da DRE estão somados. Selecione uma única semana no calendário para editar.
+              </span>
+            </div>
+          )}
+
           {!hasData && (
             <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center dark:border-slate-700 dark:bg-slate-900">
               <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
@@ -862,6 +916,94 @@ function Dashboard() {
                 </Button>
               </div>
             </div>
+          </section>
+
+          {/* Histórico de lançamentos */}
+          <section className="rounded-xl bg-white shadow-sm ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <History className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                    Histórico de lançamentos
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {savedWeeks.length} {savedWeeks.length === 1 ? "semana salva" : "semanas salvas"} · clique para abrir
+                  </p>
+                </div>
+              </div>
+            </div>
+            {savedWeeks.length === 0 ? (
+              <div className="px-5 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                Nenhuma apuração salva ainda. Preencha uma semana em <strong>Editar dados</strong> para começar.
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                <div className="hidden grid-cols-12 px-5 py-2 text-[11px] font-medium uppercase tracking-wide text-slate-400 sm:grid dark:text-slate-500">
+                  <div className="col-span-4">Semana</div>
+                  <div className="col-span-2 text-right">Receita</div>
+                  <div className="col-span-2 text-right">Pedidos</div>
+                  <div className="col-span-2 text-right">Ticket</div>
+                  <div className="col-span-1 text-right">Lucro</div>
+                  <div className="col-span-1" />
+                </div>
+                {savedWeeks.map((entry) => {
+                  const d = computeDre(entry.data);
+                  const end = addDays(entry.startDate, 6);
+                  const label = `${format(entry.startDate, "dd MMM", { locale: ptBR })} → ${format(end, "dd MMM yyyy", { locale: ptBR })}`;
+                  const isCurrent = entry.key === key && !isAggregated;
+                  return (
+                    <div
+                      key={entry.key}
+                      className={`grid grid-cols-12 items-center gap-y-1 px-5 py-3 text-sm transition hover:bg-slate-50/70 dark:hover:bg-slate-950/60 ${
+                        isCurrent ? "bg-emerald-50/40 dark:bg-emerald-950/20" : ""
+                      }`}
+                    >
+                      <button
+                        onClick={() => handleSelectWeek(entry)}
+                        className="col-span-10 flex flex-col text-left sm:col-span-4"
+                      >
+                        <span className="font-medium text-slate-800 dark:text-slate-200">{label}</span>
+                        {isCurrent && (
+                          <span className="text-[10px] font-medium uppercase text-emerald-600 dark:text-emerald-400">
+                            selecionada
+                          </span>
+                        )}
+                      </button>
+                      <div className="col-span-6 text-right font-mono tabular-nums text-slate-700 sm:col-span-2 dark:text-slate-300">
+                        {currency(d.receitaBruta)}
+                      </div>
+                      <div className="col-span-6 text-right font-mono tabular-nums text-slate-600 sm:col-span-2 dark:text-slate-400">
+                        {d.totalPedidos}
+                      </div>
+                      <div className="col-span-6 text-right font-mono tabular-nums text-slate-600 sm:col-span-2 dark:text-slate-400">
+                        {currency(d.ticketMedio)}
+                      </div>
+                      <div
+                        className={`col-span-4 text-right font-mono tabular-nums sm:col-span-1 ${
+                          d.lucroLiquido >= 0
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-red-600 dark:text-red-400"
+                        }`}
+                      >
+                        {currency(d.lucroLiquido)}
+                      </div>
+                      <div className="col-span-2 flex justify-end sm:col-span-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-slate-400 hover:text-red-500"
+                          onClick={() => handleDeleteWeek(entry.key)}
+                          title="Excluir apuração"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
         </main>
       </div>
