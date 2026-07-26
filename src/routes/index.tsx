@@ -470,8 +470,10 @@ function Dashboard() {
             </Popover>
 
             <Button
-              className="h-9 gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
+              className="h-9 gap-2 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
               onClick={() => setEditOpen(true)}
+              disabled={isAggregated}
+              title={isAggregated ? "Selecione uma única semana para editar" : "Editar dados"}
             >
               <Pencil className="h-4 w-4" />
               <span className="hidden sm:inline text-xs">Editar dados</span>
