@@ -167,7 +167,7 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
             custosFixos: dre.fixosTotal + dre.marketingTotal,
             lucroLiquido: dre.lucroLiquido,
             margemContribuicao: +dre.margemContribuicaoPct.toFixed(2),
-            cmv: +dre.cmvPct.toFixed(2),
+            cmv: +dre.cmvRealPct.toFixed(2),
             ticketMedio: +dre.ticketMedio.toFixed(2),
             canais: dre.canais.map((c) => ({ nome: c.nome, percentual: c.percentual })),
           },
