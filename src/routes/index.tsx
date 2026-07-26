@@ -230,6 +230,48 @@ function SubRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function LedgerRow({ entry, onDelete }: { entry: WeekEntry; onDelete: () => void }) {
+  const dt = new Date(entry.at);
+  const catLabel: Record<string, string> = {
+    cmv: "CMV",
+    embalagens: "Embalagens",
+    frete: "Frete",
+    taxaPagamento: "Taxa cartão",
+    fixo: "Fixo",
+    marketing: "Marketing",
+    promocao: "Promoção",
+    "canal-receita": "Receita",
+    "canal-pedidos": "Pedidos",
+    "canal-taxa": "Taxa app",
+    "canal-desconto": "Desconto",
+    imposto: "Imposto",
+    outro: "",
+  };
+  const isCount = entry.categoria === "canal-pedidos";
+  return (
+    <div className="flex items-center gap-3 py-2 text-sm">
+      <span className="w-28 shrink-0 font-mono tabular-nums text-slate-900 dark:text-white">
+        {isCount ? `${entry.valor}` : currency(entry.valor)}
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="truncate text-slate-800 dark:text-slate-200">{entry.label}</div>
+        <div className="text-[10px] uppercase text-slate-400">
+          {catLabel[entry.categoria] ?? entry.categoria} · {entry.source}
+          {" · "}
+          {dt.toLocaleDateString("pt-BR")} {dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+        </div>
+      </div>
+      <button
+        onClick={onDelete}
+        title="Remover lançamento"
+        className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
 function useDarkMode() {
   const [dark, setDark] = useState(false);
   useEffect(() => {
