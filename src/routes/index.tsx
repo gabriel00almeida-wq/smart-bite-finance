@@ -353,6 +353,28 @@ function Dashboard() {
     if (typeof window !== "undefined" && !window.confirm("Excluir esta apuração?")) return;
     deleteWeek(k);
     setHistoryTick((t) => t + 1);
+
+  function handleDeleteEntry(weekKey: string, entryId: string) {
+    removeLedgerEntry(weekKey);
+    // reload if it's the current week
+    if (weekKey === key) {
+      setWeek((w) => ({
+        ...w,
+        ledger: (w.ledger ?? []).filter((e) => e.id !== entryId),
+      }));
+    }
+    // update stored week
+    try {
+      const raw = localStorage.getItem(weekKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        parsed.ledger = (parsed.ledger ?? []).filter((e: WeekEntry) => e.id !== entryId);
+        localStorage.setItem(weekKey, JSON.stringify(parsed));
+      }
+    } catch {
+      // ignore
+    }
+    setHistoryTick((t) => t + 1);
   }
 
   function handleSelectWeek(entry: SavedWeekEntry) {
