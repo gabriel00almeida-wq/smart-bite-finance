@@ -533,7 +533,7 @@ export function EditWeekSheet({ open, onOpenChange, initial, onSave, periodLabel
             variant="ghost"
             size="sm"
             className="mt-4 text-xs text-indigo-600 hover:text-indigo-700"
-            onClick={() => setData(SAMPLE_WEEK)}
+            onClick={() => setData(EMPTY_WEEK)}
           >
             <Sparkles className="mr-1 h-3 w-3" />
             Preencher com exemplo
