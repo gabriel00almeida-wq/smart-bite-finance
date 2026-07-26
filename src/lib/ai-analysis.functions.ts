@@ -129,6 +129,9 @@ Você DEVE responder SEMPRE em JSON puro, sem markdown, sem cercas, no formato:
 Regras do patch:
 - Só inclua CAMPOS que o usuário mencionou. Se não mencionou, OMITA (não use 0).
 - Valores em REAIS (number), sem "R$". NUNCA em percentual (exceto "simplesAliquota" que é %).
+- CUSTOS SÃO INCREMENTAIS: "cmv", "embalagens", "freteEntregador", "taxaPagamento", "fixos", "marketing", "promocoes" — cada mensagem SOMA no total da semana. Ex.: se o usuário diz "gastei 140 no hortifruti", envie cmv: 140 (não o total acumulado). Se depois disser "mais 79 de hortifruti", envie cmv: 79 de novo — o sistema soma.
+- Para "fixos" / "marketing" / "promocoes", use o label mais próximo do que o usuário disse (ex: "Aluguel", "Sem Limite", "Hortifruti"). Se o label já existe, o valor será somado; se não, será criado.
+- RECEITAS por canal ("channels") são TOTAIS do canal na semana (substituem valores anteriores), pois vêm de prints do painel de cada app.
 - "promocoes" = cupons, cashback, frete grátis bancado pela casa, brindes.
 - "marketing" = mídia paga (ads iFood, Meta, Google, influenciadores).
 - "fixos" = custos fixos (aluguel, folha, energia, etc.).

@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useServerFn } from "@tanstack/react-start";
 import { analyzeDre, chatCerebro } from "@/lib/ai-analysis.functions";
 import {
-  applyPatch,
+  applyChatPatch,
   computeDre,
   type WeekData,
   type WeekPatch,
@@ -124,12 +124,14 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
           return Array.isArray(v) ? v.length > 0 : v !== undefined;
         });
       if (hasPatch) {
-        // Se a IA marcou imposto como pago e o usuário anexou imagem, guarda como comprovante.
         if (patch.impostoPago && images.length > 0 && !patch.impostoComprovanteUrl) {
           patch.impostoComprovanteUrl = images[0];
           patch.impostoPagoEm = new Date().toISOString();
         }
-        const updated = applyPatch(week, patch);
+        const updated = applyChatPatch(week, patch, {
+          source: images.length > 0 ? "nota" : "chat",
+          note: clean || "(imagem)",
+        });
         onWeekChange(updated);
       }
       setMessages([
@@ -167,7 +169,7 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
             custosFixos: dre.fixosTotal + dre.marketingTotal,
             lucroLiquido: dre.lucroLiquido,
             margemContribuicao: +dre.margemContribuicaoPct.toFixed(2),
-            cmv: +dre.cmvPct.toFixed(2),
+            cmv: +dre.cmvRealPct.toFixed(2),
             ticketMedio: +dre.ticketMedio.toFixed(2),
             canais: dre.canais.map((c) => ({ nome: c.nome, percentual: c.percentual })),
           },

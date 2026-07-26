@@ -82,6 +82,8 @@ import {
 import { applyPatch, type WeekPatch } from "@/lib/dre-store";
 import { EditWeekSheet } from "@/components/EditWeekSheet";
 import { AiChatSheet } from "@/components/AiChatSheet";
+import { Sidebar } from "@/components/Sidebar";
+import { removeLedgerEntry, type WeekEntry } from "@/lib/dre-store";
 import { useServerFn } from "@tanstack/react-start";
 import { chatCerebro } from "@/lib/ai-analysis.functions";
 
@@ -228,6 +230,48 @@ function SubRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function LedgerRow({ entry, onDelete }: { entry: WeekEntry; onDelete: () => void }) {
+  const dt = new Date(entry.at);
+  const catLabel: Record<string, string> = {
+    cmv: "CMV",
+    embalagens: "Embalagens",
+    frete: "Frete",
+    taxaPagamento: "Taxa cartão",
+    fixo: "Fixo",
+    marketing: "Marketing",
+    promocao: "Promoção",
+    "canal-receita": "Receita",
+    "canal-pedidos": "Pedidos",
+    "canal-taxa": "Taxa app",
+    "canal-desconto": "Desconto",
+    imposto: "Imposto",
+    outro: "",
+  };
+  const isCount = entry.categoria === "canal-pedidos";
+  return (
+    <div className="flex items-center gap-3 py-2 text-sm">
+      <span className="w-28 shrink-0 font-mono tabular-nums text-slate-900 dark:text-white">
+        {isCount ? `${entry.valor}` : currency(entry.valor)}
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="truncate text-slate-800 dark:text-slate-200">{entry.label}</div>
+        <div className="text-[10px] uppercase text-slate-400">
+          {catLabel[entry.categoria] ?? entry.categoria} · {entry.source}
+          {" · "}
+          {dt.toLocaleDateString("pt-BR")} {dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+        </div>
+      </div>
+      <button
+        onClick={onDelete}
+        title="Remover lançamento"
+        className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
 function useDarkMode() {
   const [dark, setDark] = useState(false);
   useEffect(() => {
@@ -308,6 +352,24 @@ function Dashboard() {
   function handleDeleteWeek(k: string) {
     if (typeof window !== "undefined" && !window.confirm("Excluir esta apuração?")) return;
     deleteWeek(k);
+    setHistoryTick((t) => t + 1);
+  }
+
+  function handleDeleteEntry(weekKey: string, entryId: string) {
+    if (weekKey === key) {
+      setWeek((w) => removeLedgerEntry(w, entryId));
+    } else {
+      try {
+        const raw = localStorage.getItem(weekKey);
+        if (raw) {
+          const parsed = JSON.parse(raw) as WeekData;
+          const next = removeLedgerEntry(parsed, entryId);
+          localStorage.setItem(weekKey, JSON.stringify(next));
+        }
+      } catch {
+        // ignore
+      }
+    }
     setHistoryTick((t) => t + 1);
   }
 
@@ -399,36 +461,7 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-slate-900 text-slate-200 lg:flex dark:bg-slate-950 dark:border-r dark:border-slate-800">
-        <div className="flex items-center gap-3 px-6 py-6">
-          <img
-            src={logoAsset.url}
-            alt="Itadaki Sushi"
-            className="h-11 w-11 rounded-lg bg-slate-800 object-contain p-1"
-          />
-          <div>
-            <div className="text-sm font-semibold text-white">Itadaki Sushi</div>
-            <div className="text-xs text-slate-400">Finance OS</div>
-          </div>
-        </div>
-        <nav className="mt-4 flex flex-col gap-1 px-3">
-          {navItems.map((item) => (
-            <button
-              key={item.label}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                item.active
-                  ? "bg-slate-800 text-white"
-                  : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
-              }`}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </button>
-          ))}
-        </nav>
-        <div className="mt-auto px-6 py-6 text-xs text-slate-500">v1.0 · Julho 2026</div>
-      </aside>
+      <Sidebar />
 
       {/* Main */}
       <div className="lg:pl-64">
@@ -546,9 +579,9 @@ function Dashboard() {
             />
             <KpiCard
               title="CMV Real"
-              value={`${dre.cmvPct.toFixed(1)}%`}
+              value={`${dre.cmvRealPct.toFixed(1)}%`}
               icon={Receipt}
-              positive={dre.cmvPct <= 35 && dre.cmvPct > 0}
+              positive={dre.cmvRealPct <= 35 && dre.cmvRealPct > 0}
             />
             <KpiCard
               title="Lucro Líquido"
@@ -679,8 +712,11 @@ function Dashboard() {
                 {dre.canais.length === 0 && <SubRow label="—" value={currency(0)} />}
               </DreRow>
               <DreRow label="Custos Variáveis" value={`- ${currency(dre.custosVariaveis)}`}>
-                <SubRow label="CMV (Insumos)" value={`- ${currency(dre.cmv)}`} />
-                <SubRow label="Embalagens" value={`- ${currency(dre.embalagens)}`} />
+                <SubRow label="CMV Contábil (insumos + embalagens)" value={`- ${currency(dre.cmvContabil)} · ${dre.cmvContabilPct.toFixed(1)}% da receita bruta`} />
+                <SubRow label="  ↳ Insumos" value={`- ${currency(dre.cmv)}`} />
+                <SubRow label="  ↳ Embalagens" value={`- ${currency(dre.embalagens)}`} />
+                <SubRow label="CMV Financeiro (sobre receita líquida)" value={`${dre.cmvFinanceiroPct.toFixed(1)}% · líq. ${currency(dre.receitaLiquida)}`} />
+                <SubRow label={`CMV Real (após estoque${dre.estoqueValor > 0 ? ` de ${currency(dre.estoqueValor)}` : ""})`} value={`- ${currency(dre.cmvReal)} · ${dre.cmvRealPct.toFixed(1)}%`} />
                 <SubRow label="Frete / entregador" value={`- ${currency(dre.freteEntregador)}`} />
                 <SubRow label="Taxas / comissões dos apps" value={`- ${currency(dre.taxasMarketplace)}`} />
                 <SubRow label="Descontos concedidos" value={`- ${currency(dre.descontosTotal)}`} />
@@ -938,71 +974,99 @@ function Dashboard() {
                 Nenhuma apuração salva ainda. Preencha uma semana em <strong>Editar dados</strong> para começar.
               </div>
             ) : (
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                <div className="hidden grid-cols-12 px-5 py-2 text-[11px] font-medium uppercase tracking-wide text-slate-400 sm:grid dark:text-slate-500">
-                  <div className="col-span-4">Semana</div>
-                  <div className="col-span-2 text-right">Receita</div>
-                  <div className="col-span-2 text-right">Pedidos</div>
-                  <div className="col-span-2 text-right">Ticket</div>
-                  <div className="col-span-1 text-right">Lucro</div>
-                  <div className="col-span-1" />
-                </div>
+              <Accordion type="multiple" className="divide-y divide-slate-100 dark:divide-slate-800">
                 {savedWeeks.map((entry) => {
                   const d = computeDre(entry.data);
                   const end = addDays(entry.startDate, 6);
                   const label = `${format(entry.startDate, "dd MMM", { locale: ptBR })} → ${format(end, "dd MMM yyyy", { locale: ptBR })}`;
                   const isCurrent = entry.key === key && !isAggregated;
+                  const ledger = (entry.data.ledger ?? []).slice().sort((a, b) => a.at - b.at);
+                  const ledgerTotal = ledger.reduce((s, e) => s + (["canal-pedidos"].includes(e.categoria) ? 0 : e.valor), 0);
                   return (
-                    <div
-                      key={entry.key}
-                      className={`grid grid-cols-12 items-center gap-y-1 px-5 py-3 text-sm transition hover:bg-slate-50/70 dark:hover:bg-slate-950/60 ${
-                        isCurrent ? "bg-emerald-50/40 dark:bg-emerald-950/20" : ""
-                      }`}
-                    >
-                      <button
-                        onClick={() => handleSelectWeek(entry)}
-                        className="col-span-10 flex flex-col text-left sm:col-span-4"
-                      >
-                        <span className="font-medium text-slate-800 dark:text-slate-200">{label}</span>
-                        {isCurrent && (
-                          <span className="text-[10px] font-medium uppercase text-emerald-600 dark:text-emerald-400">
-                            selecionada
-                          </span>
-                        )}
-                      </button>
-                      <div className="col-span-6 text-right font-mono tabular-nums text-slate-700 sm:col-span-2 dark:text-slate-300">
-                        {currency(d.receitaBruta)}
-                      </div>
-                      <div className="col-span-6 text-right font-mono tabular-nums text-slate-600 sm:col-span-2 dark:text-slate-400">
-                        {d.totalPedidos}
-                      </div>
-                      <div className="col-span-6 text-right font-mono tabular-nums text-slate-600 sm:col-span-2 dark:text-slate-400">
-                        {currency(d.ticketMedio)}
-                      </div>
+                    <AccordionItem key={entry.key} value={entry.key} className="border-0">
                       <div
-                        className={`col-span-4 text-right font-mono tabular-nums sm:col-span-1 ${
-                          d.lucroLiquido >= 0
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-red-600 dark:text-red-400"
+                        className={`flex items-center gap-2 px-5 ${
+                          isCurrent ? "bg-emerald-50/40 dark:bg-emerald-950/20" : ""
                         }`}
                       >
-                        {currency(d.lucroLiquido)}
+                        <AccordionTrigger className="flex-1 py-3 hover:no-underline">
+                          <div className="grid w-full grid-cols-12 items-center gap-y-1 pr-2 text-left text-sm">
+                            <div className="col-span-12 flex flex-col sm:col-span-4">
+                              <span className="font-medium text-slate-800 dark:text-slate-200">{label}</span>
+                              <span className="text-[10px] uppercase text-slate-400">
+                                {ledger.length} {ledger.length === 1 ? "lançamento" : "lançamentos"}
+                                {isCurrent && " · selecionada"}
+                              </span>
+                            </div>
+                            <div className="col-span-6 text-right font-mono tabular-nums text-slate-700 sm:col-span-2 dark:text-slate-300">
+                              {currency(d.receitaBruta)}
+                            </div>
+                            <div className="col-span-6 text-right font-mono tabular-nums text-slate-600 sm:col-span-2 dark:text-slate-400">
+                              {d.totalPedidos} ped.
+                            </div>
+                            <div className="col-span-6 text-right font-mono tabular-nums text-slate-600 sm:col-span-2 dark:text-slate-400">
+                              {currency(d.ticketMedio)}
+                            </div>
+                            <div
+                              className={`col-span-6 text-right font-mono tabular-nums sm:col-span-2 ${
+                                d.lucroLiquido >= 0
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-red-600 dark:text-red-400"
+                              }`}
+                            >
+                              {currency(d.lucroLiquido)}
+                            </div>
+                          </div>
+                        </AccordionTrigger>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs text-slate-500 hover:text-indigo-600"
+                            onClick={() => handleSelectWeek(entry)}
+                            title="Selecionar no calendário"
+                          >
+                            abrir
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-slate-400 hover:text-red-500"
+                            onClick={() => handleDeleteWeek(entry.key)}
+                            title="Excluir apuração"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="col-span-2 flex justify-end sm:col-span-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-slate-400 hover:text-red-500"
-                          onClick={() => handleDeleteWeek(entry.key)}
-                          title="Excluir apuração"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
+                      <AccordionContent className="bg-slate-50/60 px-5 pb-4 pt-1 dark:bg-slate-950/40">
+                        {ledger.length === 0 ? (
+                          <p className="py-3 text-xs text-slate-500 dark:text-slate-400">
+                            Sem lançamentos individuais registrados nesta semana. Os dados foram
+                            inseridos direto pelo formulário "Editar dados".
+                          </p>
+                        ) : (
+                          <div className="divide-y divide-slate-200/70 dark:divide-slate-800">
+                            {ledger.map((e) => (
+                              <LedgerRow
+                                key={e.id}
+                                entry={e}
+                                onDelete={() => handleDeleteEntry(entry.key, e.id)}
+                              />
+                            ))}
+                            <div className="flex items-center justify-between py-2.5 pt-3 text-sm font-semibold">
+                              <span className="text-slate-800 dark:text-slate-200">Total lançado</span>
+                              <span className="font-mono tabular-nums text-slate-900 dark:text-white">
+                                {currency(ledgerTotal)}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </AccordionContent>
+                    </AccordionItem>
                   );
                 })}
-              </div>
+              </Accordion>
             )}
           </section>
         </main>

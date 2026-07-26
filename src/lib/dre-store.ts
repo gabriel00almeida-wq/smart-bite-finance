@@ -11,24 +11,51 @@ export type ChannelRow = {
 
 export type LineItem = { label: string; valor: number };
 
+export type LedgerSource = "chat" | "nota" | "form";
+
+export type LedgerCategory =
+  | "cmv"
+  | "embalagens"
+  | "frete"
+  | "taxaPagamento"
+  | "fixo"
+  | "marketing"
+  | "promocao"
+  | "canal-receita"
+  | "canal-pedidos"
+  | "canal-taxa"
+  | "canal-desconto"
+  | "imposto"
+  | "outro";
+
+export type WeekEntry = {
+  id: string;
+  at: number; // timestamp
+  source: LedgerSource;
+  categoria: LedgerCategory;
+  label: string; // rótulo humano (ex.: "Hortifruti", "Sem Limite", "iFood receita")
+  valor: number;
+  note?: string; // texto original da mensagem
+};
+
 export type WeekData = {
   channels: ChannelRow[];
-  taxaPagamento: number; // R$ — taxas de cartão/pagamento no total
+  taxaPagamento: number;
   embalagens: number;
   freteEntregador: number;
   cmv: number;
   fixos: LineItem[];
   marketing: LineItem[];
   promocoes: LineItem[];
-  totalPedidosOverride?: number; // se > 0, usa este total ao invés da soma por canal
-  // Simples Nacional — provisão sobre a receita, só abate no lucro quando o pagamento for confirmado
-  simplesAliquota: number; // % (ex.: 6)
+  totalPedidosOverride?: number;
+  simplesAliquota: number;
   impostoPago: boolean;
-  impostoPagoValor?: number; // R$ efetivamente pago (default = provisão)
-  impostoComprovanteUrl?: string; // data URL do comprovante enviado no chat
-  impostoPagoEm?: string; // ISO date
+  impostoPagoValor?: number;
+  impostoComprovanteUrl?: string;
+  impostoPagoEm?: string;
+  estoqueValor?: number; // R$ que ficou em estoque (não consumido) — abate no CMV Real
+  ledger?: WeekEntry[]; // log de lançamentos individuais
 };
-
 
 export const DEFAULT_CHANNELS: ChannelRow[] = [
   { nome: "iFood", receita: 0, pedidos: 0, taxas: 0, descontos: 0, color: "#EA1D2C" },
@@ -44,58 +71,13 @@ export const EMPTY_WEEK: WeekData = {
   embalagens: 0,
   freteEntregador: 0,
   cmv: 0,
-  fixos: [
-    { label: "Aluguel", valor: 0 },
-    { label: "Folha de Pagamento", valor: 0 },
-    { label: "Pró-labore", valor: 0 },
-    { label: "Energia / Água", valor: 0 },
-    { label: "Internet / Softwares", valor: 0 },
-    { label: "Contador", valor: 0 },
-  ],
-  marketing: [
-    { label: "Ads iFood", valor: 0 },
-    { label: "Ads Meta / Google", valor: 0 },
-    { label: "Influenciadores", valor: 0 },
-  ],
-  promocoes: [
-    { label: "Cupom / Frete grátis", valor: 0 },
-    { label: "Cashback / Fidelidade", valor: 0 },
-  ],
+  fixos: [],
+  marketing: [],
+  promocoes: [],
   simplesAliquota: 6,
   impostoPago: false,
-};
-
-export const SAMPLE_WEEK: WeekData = {
-  channels: [
-    { nome: "iFood", receita: 42840, pedidos: 448, taxas: 10710, descontos: 1200, color: "#EA1D2C" },
-    { nome: "99Food", receita: 23800, pedidos: 251, taxas: 5236, descontos: 800, color: "#FFD100" },
-    { nome: "Anotai", receita: 28560, pedidos: 298, taxas: 2856, descontos: 0, color: "#2563EB" },
-    { nome: "Próprio / WhatsApp", receita: 0, pedidos: 0, taxas: 0, descontos: 0, color: "#3B82F6" },
-    { nome: "Salão", receita: 0, pedidos: 0, taxas: 0, descontos: 0, color: "#8B5CF6" },
-  ],
-  taxaPagamento: 2380,
-  embalagens: 4285,
-  freteEntregador: 1200,
-  cmv: 29702,
-  fixos: [
-    { label: "Aluguel", valor: 6500 },
-    { label: "Folha de Pagamento", valor: 7800 },
-    { label: "Pró-labore", valor: 0 },
-    { label: "Energia / Água", valor: 1950 },
-    { label: "Internet / Softwares", valor: 0 },
-    { label: "Contador", valor: 0 },
-  ],
-  marketing: [
-    { label: "Ads iFood", valor: 800 },
-    { label: "Ads Meta / Google", valor: 400 },
-    { label: "Influenciadores", valor: 0 },
-  ],
-  promocoes: [
-    { label: "Cupom / Frete grátis", valor: 600 },
-    { label: "Cashback / Fidelidade", valor: 0 },
-  ],
-  simplesAliquota: 6,
-  impostoPago: false,
+  estoqueValor: 0,
+  ledger: [],
 };
 
 export function weekKey(from?: Date): string {
@@ -112,7 +94,6 @@ export function loadWeek(key: string): WeekData {
       channels?: Array<Partial<ChannelRow> & { taxaPct?: number }>;
       taxaPagamentoPct?: number;
     };
-    // Merge + migração de campos antigos
     const rawChannels = (parsed.channels?.length ? parsed.channels : EMPTY_WEEK.channels) as Array<
       Partial<ChannelRow> & { taxaPct?: number }
     >;
@@ -140,9 +121,11 @@ export function loadWeek(key: string): WeekData {
         (parsed.taxaPagamentoPct
           ? (channels.reduce((s, c) => s + c.receita, 0) * parsed.taxaPagamentoPct) / 100
           : 0),
-      fixos: parsed.fixos ?? EMPTY_WEEK.fixos,
-      marketing: parsed.marketing ?? EMPTY_WEEK.marketing,
-      promocoes: parsed.promocoes ?? EMPTY_WEEK.promocoes,
+      fixos: parsed.fixos ?? [],
+      marketing: parsed.marketing ?? [],
+      promocoes: parsed.promocoes ?? [],
+      ledger: parsed.ledger ?? [],
+      estoqueValor: parsed.estoqueValor ?? 0,
     };
   } catch {
     return EMPTY_WEEK;
@@ -175,10 +158,10 @@ export type WeekPatch = {
   impostoPagoValor?: number;
   impostoComprovanteUrl?: string;
   impostoPagoEm?: string;
+  estoqueValor?: number;
 };
 
-
-function mergeLineItems(list: LineItem[], patch: LineItem[]): LineItem[] {
+function mergeLineItemsReplace(list: LineItem[], patch: LineItem[]): LineItem[] {
   const out = list.map((f) => ({ ...f }));
   for (const item of patch) {
     const idx = out.findIndex((f) => f.label.toLowerCase() === item.label.toLowerCase());
@@ -188,6 +171,17 @@ function mergeLineItems(list: LineItem[], patch: LineItem[]): LineItem[] {
   return out;
 }
 
+function mergeLineItemsAdditive(list: LineItem[], patch: LineItem[]): LineItem[] {
+  const out = list.map((f) => ({ ...f }));
+  for (const item of patch) {
+    const idx = out.findIndex((f) => f.label.toLowerCase() === item.label.toLowerCase());
+    if (idx >= 0) out[idx] = { ...out[idx], valor: (out[idx].valor || 0) + item.valor };
+    else out.push({ label: item.label, valor: item.valor });
+  }
+  return out;
+}
+
+// applyPatch (REPLACE) — usado pelo formulário "Editar dados"
 export function applyPatch(w: WeekData, patch: WeekPatch): WeekData {
   const next: WeekData = {
     ...w,
@@ -195,6 +189,7 @@ export function applyPatch(w: WeekData, patch: WeekPatch): WeekData {
     fixos: w.fixos.map((f) => ({ ...f })),
     marketing: w.marketing.map((f) => ({ ...f })),
     promocoes: w.promocoes.map((f) => ({ ...f })),
+    ledger: [...(w.ledger ?? [])],
   };
   if (patch.channels) {
     for (const p of patch.channels) {
@@ -218,21 +213,236 @@ export function applyPatch(w: WeekData, patch: WeekPatch): WeekData {
   if (patch.taxaPagamento !== undefined) next.taxaPagamento = patch.taxaPagamento;
   if (patch.totalPedidosOverride !== undefined)
     next.totalPedidosOverride = patch.totalPedidosOverride;
-
-  if (patch.fixos) next.fixos = mergeLineItems(next.fixos, patch.fixos);
-  if (patch.marketing) next.marketing = mergeLineItems(next.marketing, patch.marketing);
-  if (patch.promocoes) next.promocoes = mergeLineItems(next.promocoes, patch.promocoes);
+  if (patch.fixos) next.fixos = mergeLineItemsReplace(next.fixos, patch.fixos);
+  if (patch.marketing) next.marketing = mergeLineItemsReplace(next.marketing, patch.marketing);
+  if (patch.promocoes) next.promocoes = mergeLineItemsReplace(next.promocoes, patch.promocoes);
   if (patch.simplesAliquota !== undefined) next.simplesAliquota = patch.simplesAliquota;
   if (patch.impostoPago !== undefined) next.impostoPago = patch.impostoPago;
   if (patch.impostoPagoValor !== undefined) next.impostoPagoValor = patch.impostoPagoValor;
   if (patch.impostoComprovanteUrl !== undefined)
     next.impostoComprovanteUrl = patch.impostoComprovanteUrl;
   if (patch.impostoPagoEm !== undefined) next.impostoPagoEm = patch.impostoPagoEm;
+  if (patch.estoqueValor !== undefined) next.estoqueValor = patch.estoqueValor;
   return next;
+}
+
+// applyChatPatch (ADITIVO em custos, replace em canais/pedidos) — usado pelo Cérebro
+// Também gera entradas no ledger para cada valor lançado.
+export function applyChatPatch(
+  w: WeekData,
+  patch: WeekPatch,
+  meta: { source: LedgerSource; note?: string; at?: number },
+): WeekData {
+  const at = meta.at ?? Date.now();
+  const src = meta.source;
+  const newEntries: WeekEntry[] = [];
+  const mkId = () => `${at}-${Math.random().toString(36).slice(2, 9)}`;
+
+  const next: WeekData = {
+    ...w,
+    channels: w.channels.map((c) => ({ ...c })),
+    fixos: w.fixos.map((f) => ({ ...f })),
+    marketing: w.marketing.map((f) => ({ ...f })),
+    promocoes: w.promocoes.map((f) => ({ ...f })),
+    ledger: [...(w.ledger ?? [])],
+  };
+
+  if (patch.channels) {
+    for (const p of patch.channels) {
+      const idx = next.channels.findIndex(
+        (c) => c.nome.toLowerCase() === p.nome.toLowerCase(),
+      );
+      if (idx < 0) continue;
+      if (p.receita !== undefined) {
+        next.channels[idx].receita = p.receita;
+        newEntries.push({
+          id: mkId(), at, source: src, categoria: "canal-receita",
+          label: `${p.nome} — receita`, valor: p.receita, note: meta.note,
+        });
+      }
+      if (p.pedidos !== undefined) {
+        next.channels[idx].pedidos = p.pedidos;
+        newEntries.push({
+          id: mkId(), at, source: src, categoria: "canal-pedidos",
+          label: `${p.nome} — pedidos`, valor: p.pedidos, note: meta.note,
+        });
+      }
+      if (p.taxas !== undefined) {
+        next.channels[idx].taxas = p.taxas;
+        newEntries.push({
+          id: mkId(), at, source: src, categoria: "canal-taxa",
+          label: `${p.nome} — taxa do app`, valor: p.taxas, note: meta.note,
+        });
+      }
+      if (p.descontos !== undefined) {
+        next.channels[idx].descontos = p.descontos;
+        newEntries.push({
+          id: mkId(), at, source: src, categoria: "canal-desconto",
+          label: `${p.nome} — descontos`, valor: p.descontos, note: meta.note,
+        });
+      }
+    }
+  }
+
+  // Custos aditivos
+  if (patch.embalagens !== undefined && patch.embalagens > 0) {
+    next.embalagens = (next.embalagens || 0) + patch.embalagens;
+    newEntries.push({
+      id: mkId(), at, source: src, categoria: "embalagens",
+      label: "Embalagens", valor: patch.embalagens, note: meta.note,
+    });
+  }
+  if (patch.freteEntregador !== undefined && patch.freteEntregador > 0) {
+    next.freteEntregador = (next.freteEntregador || 0) + patch.freteEntregador;
+    newEntries.push({
+      id: mkId(), at, source: src, categoria: "frete",
+      label: "Frete / entregador", valor: patch.freteEntregador, note: meta.note,
+    });
+  }
+  if (patch.cmv !== undefined && patch.cmv > 0) {
+    next.cmv = (next.cmv || 0) + patch.cmv;
+    // Se o usuário mencionou um label (ex: "Hortifruti"), tenta puxar da note
+    const inferredLabel = inferCmvLabel(meta.note) ?? "CMV / insumos";
+    newEntries.push({
+      id: mkId(), at, source: src, categoria: "cmv",
+      label: inferredLabel, valor: patch.cmv, note: meta.note,
+    });
+  }
+  if (patch.taxaPagamento !== undefined && patch.taxaPagamento > 0) {
+    next.taxaPagamento = (next.taxaPagamento || 0) + patch.taxaPagamento;
+    newEntries.push({
+      id: mkId(), at, source: src, categoria: "taxaPagamento",
+      label: "Taxa de cartão / pagamento", valor: patch.taxaPagamento, note: meta.note,
+    });
+  }
+
+  if (patch.fixos) {
+    next.fixos = mergeLineItemsAdditive(next.fixos, patch.fixos);
+    for (const it of patch.fixos) {
+      newEntries.push({
+        id: mkId(), at, source: src, categoria: "fixo",
+        label: it.label, valor: it.valor, note: meta.note,
+      });
+    }
+  }
+  if (patch.marketing) {
+    next.marketing = mergeLineItemsAdditive(next.marketing, patch.marketing);
+    for (const it of patch.marketing) {
+      newEntries.push({
+        id: mkId(), at, source: src, categoria: "marketing",
+        label: it.label, valor: it.valor, note: meta.note,
+      });
+    }
+  }
+  if (patch.promocoes) {
+    next.promocoes = mergeLineItemsAdditive(next.promocoes, patch.promocoes);
+    for (const it of patch.promocoes) {
+      newEntries.push({
+        id: mkId(), at, source: src, categoria: "promocao",
+        label: it.label, valor: it.valor, note: meta.note,
+      });
+    }
+  }
+
+  if (patch.totalPedidosOverride !== undefined)
+    next.totalPedidosOverride = patch.totalPedidosOverride;
+  if (patch.simplesAliquota !== undefined) next.simplesAliquota = patch.simplesAliquota;
+  if (patch.impostoPago !== undefined) next.impostoPago = patch.impostoPago;
+  if (patch.impostoPagoValor !== undefined) {
+    next.impostoPagoValor = patch.impostoPagoValor;
+    if (patch.impostoPagoValor > 0) {
+      newEntries.push({
+        id: mkId(), at, source: src, categoria: "imposto",
+        label: "DAS pago", valor: patch.impostoPagoValor, note: meta.note,
+      });
+    }
+  }
+  if (patch.impostoComprovanteUrl !== undefined)
+    next.impostoComprovanteUrl = patch.impostoComprovanteUrl;
+  if (patch.impostoPagoEm !== undefined) next.impostoPagoEm = patch.impostoPagoEm;
+  if (patch.estoqueValor !== undefined) next.estoqueValor = patch.estoqueValor;
+
+  next.ledger = [...(next.ledger ?? []), ...newEntries];
+  return next;
+}
+
+function inferCmvLabel(note?: string): string | null {
+  if (!note) return null;
+  const t = note.toLowerCase();
+  const keywords = ["hortifruti", "salmão", "salmao", "arroz", "peixe", "carne", "verdura", "fruta", "sacolão", "mercado", "atacadão", "atacado", "insumo"];
+  for (const k of keywords) if (t.includes(k)) return k.charAt(0).toUpperCase() + k.slice(1);
+  // Pega primeira palavra "grande" após "gastei/comprei/paguei"
+  const m = t.match(/(?:gastei|comprei|paguei|foi|foram)\s+(?:r?\$?\s*[\d.,]+\s+)?(?:em|de|no|na|com)?\s*([a-zà-ú]+)/i);
+  if (m && m[1] && m[1].length > 3) return m[1].charAt(0).toUpperCase() + m[1].slice(1);
+  return null;
+}
+
+export function removeLedgerEntry(w: WeekData, entryId: string): WeekData {
+  const ledger = w.ledger ?? [];
+  const entry = ledger.find((e) => e.id === entryId);
+  if (!entry) return w;
+  const next: WeekData = {
+    ...w,
+    channels: w.channels.map((c) => ({ ...c })),
+    fixos: w.fixos.map((f) => ({ ...f })),
+    marketing: w.marketing.map((f) => ({ ...f })),
+    promocoes: w.promocoes.map((f) => ({ ...f })),
+    ledger: ledger.filter((e) => e.id !== entryId),
+  };
+  const v = entry.valor;
+  switch (entry.categoria) {
+    case "cmv":
+      next.cmv = Math.max(0, (next.cmv || 0) - v);
+      break;
+    case "embalagens":
+      next.embalagens = Math.max(0, (next.embalagens || 0) - v);
+      break;
+    case "frete":
+      next.freteEntregador = Math.max(0, (next.freteEntregador || 0) - v);
+      break;
+    case "taxaPagamento":
+      next.taxaPagamento = Math.max(0, (next.taxaPagamento || 0) - v);
+      break;
+    case "fixo":
+      next.fixos = subtractFromLineItem(next.fixos, entry.label, v);
+      break;
+    case "marketing":
+      next.marketing = subtractFromLineItem(next.marketing, entry.label, v);
+      break;
+    case "promocao":
+      next.promocoes = subtractFromLineItem(next.promocoes, entry.label, v);
+      break;
+    case "canal-receita":
+    case "canal-pedidos":
+    case "canal-taxa":
+    case "canal-desconto": {
+      const nome = entry.label.split(" — ")[0];
+      const idx = next.channels.findIndex((c) => c.nome.toLowerCase() === nome.toLowerCase());
+      if (idx >= 0) {
+        if (entry.categoria === "canal-receita") next.channels[idx].receita = Math.max(0, next.channels[idx].receita - v);
+        if (entry.categoria === "canal-pedidos") next.channels[idx].pedidos = Math.max(0, next.channels[idx].pedidos - v);
+        if (entry.categoria === "canal-taxa") next.channels[idx].taxas = Math.max(0, next.channels[idx].taxas - v);
+        if (entry.categoria === "canal-desconto") next.channels[idx].descontos = Math.max(0, next.channels[idx].descontos - v);
+      }
+      break;
+    }
+    case "imposto":
+      next.impostoPagoValor = Math.max(0, (next.impostoPagoValor || 0) - v);
+      if ((next.impostoPagoValor ?? 0) === 0) next.impostoPago = false;
+      break;
+  }
+  return next;
+}
+
+function subtractFromLineItem(list: LineItem[], label: string, v: number): LineItem[] {
+  return list
+    .map((f) => (f.label.toLowerCase() === label.toLowerCase() ? { ...f, valor: Math.max(0, f.valor - v) } : f))
+    .filter((f) => f.valor > 0);
 }
 
 export type DreComputed = {
   receitaBruta: number;
+  receitaLiquida: number;
   totalPedidos: number;
   ticketMedio: number;
   taxasMarketplace: number;
@@ -241,7 +451,12 @@ export type DreComputed = {
   embalagens: number;
   freteEntregador: number;
   cmv: number;
-  cmvPct: number;
+  cmvContabil: number;
+  cmvContabilPct: number;
+  cmvFinanceiroPct: number;
+  cmvReal: number;
+  cmvRealPct: number;
+  estoqueValor: number;
   custosVariaveis: number;
   margemContribuicaoValor: number;
   margemContribuicaoPct: number;
@@ -253,7 +468,7 @@ export type DreComputed = {
   impostoDeduzido: number;
   impostoPago: boolean;
   lucroLiquido: number;
-  lucroLiquidoProjetado: number; // se o imposto fosse pago
+  lucroLiquidoProjetado: number;
   lucroPct: number;
   canais: { nome: string; receita: number; percentual: number; color: string }[];
 };
@@ -270,20 +485,25 @@ export function computeDre(w: WeekData): DreComputed {
   const taxasMarketplace = w.channels.reduce((s, c) => s + (c.taxas || 0), 0);
   const descontosTotal = w.channels.reduce((s, c) => s + (c.descontos || 0), 0);
   const taxasPagamento = w.taxaPagamento || 0;
+  const promocoesTotal = w.promocoes.reduce((s, m) => s + (m.valor || 0), 0);
+
+  // Embalagens entram no CMV (delivery)
+  const cmvContabil = (w.cmv || 0) + (w.embalagens || 0);
+  const receitaLiquida = receitaBruta - taxasMarketplace - taxasPagamento - descontosTotal - promocoesTotal;
+  const estoqueValor = w.estoqueValor || 0;
+  const cmvReal = Math.max(0, cmvContabil - estoqueValor);
+
+  const cmvContabilPct = receitaBruta > 0 ? (cmvContabil / receitaBruta) * 100 : 0;
+  const cmvFinanceiroPct = receitaLiquida > 0 ? (cmvContabil / receitaLiquida) * 100 : 0;
+  const cmvRealPct = receitaLiquida > 0 ? (cmvReal / receitaLiquida) * 100 : 0;
+
   const custosVariaveis =
-    taxasMarketplace +
-    taxasPagamento +
-    descontosTotal +
-    w.embalagens +
-    w.freteEntregador +
-    w.cmv;
-  const cmvPct = receitaBruta > 0 ? (w.cmv / receitaBruta) * 100 : 0;
+    taxasMarketplace + taxasPagamento + descontosTotal + w.freteEntregador + cmvContabil;
   const margemContribuicaoValor = receitaBruta - custosVariaveis;
   const margemContribuicaoPct =
     receitaBruta > 0 ? (margemContribuicaoValor / receitaBruta) * 100 : 0;
   const fixosTotal = w.fixos.reduce((s, f) => s + (f.valor || 0), 0);
   const marketingTotal = w.marketing.reduce((s, m) => s + (m.valor || 0), 0);
-  const promocoesTotal = w.promocoes.reduce((s, m) => s + (m.valor || 0), 0);
   const lucroAntesImposto =
     margemContribuicaoValor - fixosTotal - marketingTotal - promocoesTotal;
   const simplesAliquota = w.simplesAliquota || 0;
@@ -307,6 +527,7 @@ export function computeDre(w: WeekData): DreComputed {
 
   return {
     receitaBruta,
+    receitaLiquida,
     totalPedidos,
     ticketMedio,
     taxasMarketplace,
@@ -315,7 +536,12 @@ export function computeDre(w: WeekData): DreComputed {
     embalagens: w.embalagens,
     freteEntregador: w.freteEntregador,
     cmv: w.cmv,
-    cmvPct,
+    cmvContabil,
+    cmvContabilPct,
+    cmvFinanceiroPct,
+    cmvReal,
+    cmvRealPct,
+    estoqueValor,
     custosVariaveis,
     margemContribuicaoValor,
     margemContribuicaoPct,
@@ -382,7 +608,6 @@ function mergeChannelsSum(all: ChannelRow[][]): ChannelRow[] {
       }
     }
   }
-  // Preserve default order
   const order = DEFAULT_CHANNELS.map((c) => c.nome);
   return [...map.values()].sort(
     (a, b) => order.indexOf(a.nome) - order.indexOf(b.nome),
@@ -395,10 +620,8 @@ function mergeLineItemsSum(all: LineItem[][]): LineItem[] {
     for (const item of list) {
       const k = item.label.toLowerCase();
       map.set(k, (map.get(k) || 0) + (item.valor || 0));
-      // preserve original casing
     }
   }
-  // Preserve first-seen label casing
   const labelCase = new Map<string, string>();
   for (const list of all) {
     for (const item of list) {
@@ -420,7 +643,6 @@ export function aggregateWeeks(weeks: WeekData[]): WeekData {
     0,
   );
   const anyPago = weeks.some((w) => w.impostoPago);
-  // alíquota: usa a mais frequente / última não-zero
   const aliquota =
     weeks.find((w) => w.simplesAliquota > 0)?.simplesAliquota ??
     weeks[0].simplesAliquota ??
@@ -429,6 +651,7 @@ export function aggregateWeeks(weeks: WeekData[]): WeekData {
     (s, w) => s + (w.totalPedidosOverride || 0),
     0,
   );
+  const ledger = weeks.flatMap((w) => w.ledger ?? []);
   return {
     channels: mergeChannelsSum(weeks.map((w) => w.channels)),
     taxaPagamento: weeks.reduce((s, w) => s + (w.taxaPagamento || 0), 0),
@@ -442,6 +665,8 @@ export function aggregateWeeks(weeks: WeekData[]): WeekData {
     simplesAliquota: aliquota,
     impostoPago: anyPago,
     impostoPagoValor: impostoPagoValor > 0 ? impostoPagoValor : undefined,
+    estoqueValor: weeks.reduce((s, w) => s + (w.estoqueValor || 0), 0),
+    ledger,
   };
 }
 
