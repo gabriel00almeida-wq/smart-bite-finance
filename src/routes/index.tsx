@@ -82,6 +82,8 @@ import {
 import { applyPatch, type WeekPatch } from "@/lib/dre-store";
 import { EditWeekSheet } from "@/components/EditWeekSheet";
 import { AiChatSheet } from "@/components/AiChatSheet";
+import { Sidebar } from "@/components/Sidebar";
+import { removeLedgerEntry, type WeekEntry } from "@/lib/dre-store";
 import { useServerFn } from "@tanstack/react-start";
 import { chatCerebro } from "@/lib/ai-analysis.functions";
 
