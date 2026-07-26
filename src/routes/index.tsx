@@ -72,7 +72,12 @@ import {
   saveWeek,
   weekKey,
   EMPTY_WEEK,
+  listSavedWeeks,
+  weeksInRange,
+  aggregateWeeks,
+  deleteWeek,
   type WeekData,
+  type SavedWeekEntry,
 } from "@/lib/dre-store";
 import { applyPatch, type WeekPatch } from "@/lib/dre-store";
 import { EditWeekSheet } from "@/components/EditWeekSheet";
