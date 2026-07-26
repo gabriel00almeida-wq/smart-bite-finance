@@ -122,7 +122,8 @@ Você DEVE responder SEMPRE em JSON puro, sem markdown, sem cercas, no formato:
     "promocoes": [{ "label": string, "valor": number }],
     "simplesAliquota"?: number,
     "impostoPago"?: boolean,
-    "impostoPagoValor"?: number
+    "impostoPagoValor"?: number,
+    "estoqueValor"?: number
   }
 }
 
