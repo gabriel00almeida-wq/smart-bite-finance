@@ -507,6 +507,16 @@ function Dashboard() {
         </header>
 
         <main className="space-y-6 p-4 sm:p-6">
+          {isAggregated && (
+            <div className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-300">
+              <Layers className="h-4 w-4" />
+              <span>
+                Visão consolidada de <strong>{matchedWeeks.length} semanas</strong> ({rangeLabel}).
+                Os valores da DRE estão somados. Selecione uma única semana no calendário para editar.
+              </span>
+            </div>
+          )}
+
           {!hasData && (
             <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center dark:border-slate-700 dark:bg-slate-900">
               <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
