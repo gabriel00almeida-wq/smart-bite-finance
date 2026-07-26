@@ -546,9 +546,9 @@ function Dashboard() {
             />
             <KpiCard
               title="CMV Real"
-              value={`${dre.cmvPct.toFixed(1)}%`}
+              value={`${dre.cmvRealPct.toFixed(1)}%`}
               icon={Receipt}
-              positive={dre.cmvPct <= 35 && dre.cmvPct > 0}
+              positive={dre.cmvRealPct <= 35 && dre.cmvRealPct > 0}
             />
             <KpiCard
               title="Lucro Líquido"
