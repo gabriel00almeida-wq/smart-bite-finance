@@ -11,6 +11,12 @@ export type ChannelRow = {
 
 export type LineItem = { label: string; valor: number };
 
+export type MonthlyAllocation = {
+  label: string;
+  valorMensal: number;
+  categoria: "fixo" | "marketing";
+};
+
 export type LedgerSource = "chat" | "nota" | "form";
 
 export type LedgerCategory =
@@ -160,7 +166,55 @@ export type WeekPatch = {
   impostoComprovanteUrl?: string;
   impostoPagoEm?: string;
   estoqueValor?: number;
+  rateiosMensais?: MonthlyAllocation[];
 };
+
+export function applyMonthlyAllocationsUntilYearEnd(
+  allocations: MonthlyAllocation[],
+  startDate: Date,
+  meta: { source: LedgerSource; note?: string },
+): number {
+  if (typeof window === "undefined" || allocations.length === 0) return 0;
+
+  const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+  const end = new Date(start.getFullYear(), 11, 31);
+  if (start > end) return 0;
+
+  const weekly = new Map<string, MonthlyAllocation[]>();
+  for (const allocation of allocations) {
+    if (!Number.isFinite(allocation.valorMensal) || allocation.valorMensal <= 0) continue;
+    const amounts = new Map<string, number>();
+    for (let day = new Date(start); day <= end; day.setDate(day.getDate() + 1)) {
+      const monday = new Date(day);
+      const weekday = monday.getDay();
+      monday.setDate(monday.getDate() - (weekday === 0 ? 6 : weekday - 1));
+      const key = weekKey(monday);
+      const monthDays = new Date(day.getFullYear(), day.getMonth() + 1, 0).getDate();
+      amounts.set(key, (amounts.get(key) ?? 0) + allocation.valorMensal / monthDays);
+    }
+    for (const [key, amount] of amounts) {
+      const list = weekly.get(key) ?? [];
+      list.push({ ...allocation, valorMensal: +amount.toFixed(2) });
+      weekly.set(key, list);
+    }
+  }
+
+  for (const [key, entries] of weekly) {
+    const patch: WeekPatch = {};
+    const fixos = entries
+      .filter((entry) => entry.categoria === "fixo")
+      .map((entry) => ({ label: `${entry.label} (rateio)`, valor: entry.valorMensal }));
+    const marketing = entries
+      .filter((entry) => entry.categoria === "marketing")
+      .map((entry) => ({ label: `${entry.label} (rateio)`, valor: entry.valorMensal }));
+    if (fixos.length > 0) patch.fixos = fixos;
+    if (marketing.length > 0) patch.marketing = marketing;
+    const updated = applyChatPatch(loadWeek(key), patch, meta);
+    saveWeek(key, updated);
+  }
+
+  return weekly.size;
+}
 
 function mergeLineItemsReplace(list: LineItem[], patch: LineItem[]): LineItem[] {
   const out = list.map((f) => ({ ...f }));

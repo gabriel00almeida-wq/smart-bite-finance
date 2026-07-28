@@ -75,6 +75,7 @@ import {
   listSavedWeeks,
   weeksInRange,
   aggregateWeeks,
+  applyMonthlyAllocationsUntilYearEnd,
   deleteWeek,
   type WeekData,
   type SavedWeekEntry,
@@ -344,6 +345,16 @@ function Dashboard() {
   }
 
   function handleWeekChangeFromChat(data: WeekData, patch: WeekPatch): boolean {
+    const allocations = patch.rateiosMensais ?? [];
+    if (allocations.length > 0 && range?.from) {
+      if (!isAggregated) saveWeek(key, data);
+      applyMonthlyAllocationsUntilYearEnd(allocations, range.from, {
+        source: "chat",
+        note: `Rateio mensal solicitado pelo Cérebro · ${rangeLabel}`,
+      });
+      setHistoryTick((t) => t + 1);
+      return true;
+    }
     if (isAggregated) {
       if (patch.estoqueValor === undefined || matchedWeeks.length === 0) return false;
       const closingWeek = matchedWeeks.reduce((latest, entry) =>

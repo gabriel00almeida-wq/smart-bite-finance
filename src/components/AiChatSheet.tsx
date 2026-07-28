@@ -33,6 +33,7 @@ type Props = {
 const SUGGESTIONS = [
   "Vendi 12500 no iFood com 130 pedidos",
   "Gastei 800 em embalagens e 6500 de aluguel",
+  "Rateie 6500 de aluguel por mês até dezembro",
   "Faça uma análise completa da minha semana",
 ];
 
@@ -207,8 +208,8 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
             </div>
           </SheetTitle>
           <SheetDescription className="text-xs">
-            Diga o que aconteceu na semana ("vendi 12k no iFood", "aluguel foi 6500") e eu preencho
-            a DRE. Também posso analisar seus números.
+            Informe receitas, custos ou contas mensais. Posso ratear folha, aluguel, marketing e
+            investimentos por dia até dezembro, além de analisar seus números.
           </SheetDescription>
         </SheetHeader>
 
@@ -219,8 +220,8 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
           {messages.length === 0 && (
             <div className="space-y-3">
               <div className="rounded-lg bg-white p-4 text-sm text-slate-700 shadow-sm ring-1 ring-slate-200/60 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-800">
-                Olá 👋 Sou o cérebro financeiro do Itadaki. Manda os números da semana e eu
-                atualizo sua DRE automaticamente. Ex:
+                Olá 👋 Sou o cérebro financeiro do Itadaki. Envie números da semana ou contas
+                mensais para ratear até dezembro. Ex:
               </div>
               <div className="flex flex-wrap gap-2">
                 {SUGGESTIONS.map((s) => (
