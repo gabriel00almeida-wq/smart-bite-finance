@@ -160,6 +160,29 @@ Usuário: "Rateie R$ 6.200 de folha nos dias do mês até dezembro"
 → { "reply": "Folha mensal de R$ 6.200 será rateada por dia até dezembro.", "patch": { "rateiosMensais": [{ "label": "Folha salarial", "valorMensal": 6200, "categoria": "fixo" }] } }`;
 
 
+async function callGemini(body: unknown) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY não configurada");
+  const model = "gemini-2.5-flash";
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!res.ok) {
+    const txt = await res.text();
+    if (res.status === 429) throw new Error("Limite de requisições do Gemini atingido. Tente em alguns segundos.");
+    throw new Error(`Gemini API ${res.status}: ${txt}`);
+  }
+  return res.json();
+}
+
 export const chatCerebro = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => ChatSchema.parse(data))
   .handler(async ({ data }) => {
@@ -167,31 +190,34 @@ export const chatCerebro = createServerFn({ method: "POST" })
 DRE atual (JSON):
 ${JSON.stringify(data.currentWeek, null, 2)}`;
 
-    const gatewayMessages = data.messages.map((m) => {
-      if (m.role === "user" && m.images && m.images.length > 0) {
-        return {
-          role: "user" as const,
-          content: [
-            { type: "text", text: m.content || "(imagem em anexo)" },
-            ...m.images.map((url) => ({ type: "image_url", image_url: { url } })),
-          ],
-        };
+    const contents = data.messages.map((m) => {
+      const parts: Array<Record<string, unknown>> = [
+        { text: m.content || (m.images?.length ? "(imagem em anexo)" : "") },
+      ];
+      if (m.role === "user" && m.images?.length) {
+        for (const url of m.images) {
+          const match = /^data:([^;]+);base64,(.*)$/.exec(url);
+          if (match) {
+            parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
+          }
+        }
       }
-      return { role: m.role, content: m.content };
+      return { role: m.role === "assistant" ? "model" : "user", parts };
     });
 
-    const json = await callGateway({
-      model: "google/gemini-3.6-flash",
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "system", content: contextMsg },
-        ...gatewayMessages,
-      ],
+    const json = await callGemini({
+      systemInstruction: {
+        parts: [{ text: SYSTEM_PROMPT }, { text: contextMsg }],
+      },
+      contents,
+      generationConfig: { responseMimeType: "application/json" },
     });
 
+    const raw: string =
+      json.candidates?.[0]?.content?.parts
+        ?.map((p: { text?: string }) => p.text ?? "")
+        .join("") || "{}";
 
-    const raw: string = json.choices?.[0]?.message?.content ?? "{}";
     let parsed: { reply?: string; patch?: unknown } = {};
     try {
       parsed = JSON.parse(raw);
