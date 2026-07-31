@@ -329,7 +329,10 @@ function Dashboard() {
   const dre = useMemo(() => computeDre(week), [week]);
   const hasData = dre.receitaBruta > 0;
 
-  const savedWeeks = useMemo(() => listSavedWeeks(), [historyTick]);
+  const [savedWeeks, setSavedWeeks] = useState<SavedWeekEntry[]>([]);
+  useEffect(() => {
+    setSavedWeeks(listSavedWeeks());
+  }, [historyTick]);
 
   const rangeLabel = range?.from
     ? range.to

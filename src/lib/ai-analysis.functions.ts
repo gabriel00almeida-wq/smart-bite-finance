@@ -163,7 +163,7 @@ Usuário: "Rateie R$ 6.200 de folha nos dias do mês até dezembro"
 async function callGemini(body: unknown) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY não configurada");
-  const model = "gemini-2.5-flash";
+  const model = "gemini-2.0-flash";
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
