@@ -37,6 +37,17 @@ const SUGGESTIONS = [
   "Faça uma análise completa da minha semana",
 ];
 
+function rawErrorText(e: unknown): string {
+  if (e instanceof Error) {
+    return [e.name ? `${e.name}: ${e.message}` : e.message, e.stack].filter(Boolean).join("\n");
+  }
+  try {
+    return JSON.stringify(e, null, 2);
+  } catch {
+    return String(e);
+  }
+}
+
 export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabel }: Props) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -148,7 +159,7 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
         },
       ]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao consultar a IA");
+      setError(rawErrorText(e));
     } finally {
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 30);
@@ -186,7 +197,7 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
         { role: "assistant", content: res.content },
       ]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao consultar a IA");
+      setError(rawErrorText(e));
     } finally {
       setLoading(false);
     }
@@ -286,9 +297,9 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
             </div>
           )}
           {error && (
-            <div className="rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
+            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md border border-red-200 bg-red-50 p-3 font-mono text-[11px] leading-relaxed text-red-700 select-text dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
               {error}
-            </div>
+            </pre>
           )}
         </div>
 
