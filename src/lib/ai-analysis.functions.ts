@@ -65,7 +65,8 @@ DADOS:
 ${JSON.stringify(data.dre, null, 2)}`;
 
     const json = await callGateway({
-      model: "google/gemini-3.6-flash",
+      model: GROQ_TEXT_MODEL,
+
       messages: [
         { role: "system", content: "Você é um CEO especialista em finanças de food service." },
         { role: "user", content: prompt },
