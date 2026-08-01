@@ -159,6 +159,7 @@ Usuário: "Rateie R$ 6.200 de folha nos dias do mês até dezembro"
 → { "reply": "Folha mensal de R$ 6.200 será rateada por dia até dezembro.", "patch": { "rateiosMensais": [{ "label": "Folha salarial", "valorMensal": 6200, "categoria": "fixo" }] } }`;
 
 
+// build tag: force-redeploy 2026-08-01 (lê GEMINI_API_KEY sempre em runtime)
 async function callGemini(body: unknown) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY não configurada");
