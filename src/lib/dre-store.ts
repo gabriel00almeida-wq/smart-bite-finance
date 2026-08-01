@@ -475,6 +475,9 @@ export function applyChatPatch(
   const src = meta.source;
   const newEntries: WeekEntry[] = [];
   const mkId = () => `${at}-${Math.random().toString(36).slice(2, 9)}`;
+  if (patch.remocoes?.length) w = applyRemovals(w, patch.remocoes);
+
+
 
   const next: WeekData = {
     ...w,
