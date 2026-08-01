@@ -164,21 +164,27 @@ async function callGemini(body: unknown) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY não configurada");
   const model = "gemini-2.0-flash";
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
       method: "POST",
       headers: {
         "x-goog-api-key": apiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
-    },
-  );
+    });
+  } catch (e) {
+    // Falha de rede: expõe o erro técnico original
+    throw new Error(
+      `[fetch falhou] POST ${url}\n${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}`,
+    );
+  }
   if (!res.ok) {
     const txt = await res.text();
-    if (res.status === 429) throw new Error("Limite de requisições do Gemini atingido. Tente em alguns segundos.");
-    throw new Error(`Gemini API ${res.status}: ${txt}`);
+    // Sem mensagens genéricas: retorna o corpo exato devolvido pelo Google
+    throw new Error(`[Gemini HTTP ${res.status} ${res.statusText}] ${model}\n${txt}`);
   }
   return res.json();
 }
