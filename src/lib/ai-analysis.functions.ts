@@ -30,9 +30,8 @@ async function callGateway(body: unknown) {
   });
   if (!res.ok) {
     const txt = await res.text();
-    if (res.status === 429) throw new Error("Limite de requisições atingido. Tente em alguns segundos.");
-    if (res.status === 402) throw new Error("Créditos de IA esgotados no workspace.");
-    throw new Error(`AI Gateway ${res.status}: ${txt}`);
+    // Sem mensagens genéricas: expõe o erro técnico exato do provedor
+    throw new Error(`[AI Gateway HTTP ${res.status} ${res.statusText}]\n${txt}`);
   }
   return res.json();
 }
