@@ -286,9 +286,9 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
             </div>
           )}
           {error && (
-            <div className="rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
+            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md border border-red-200 bg-red-50 p-3 font-mono text-[11px] leading-relaxed text-red-700 select-text dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
               {error}
-            </div>
+            </pre>
           )}
         </div>
 
