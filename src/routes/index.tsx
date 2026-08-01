@@ -226,14 +226,32 @@ function DreRow({
   );
 }
 
-function SubRow({ label, value }: { label: string; value: string }) {
+function SubRow({
+  label,
+  value,
+  onEdit,
+}: {
+  label: string;
+  value: string;
+  onEdit?: () => void;
+}) {
   return (
-    <div className="flex items-center justify-between py-2.5 text-sm text-slate-600 dark:text-slate-400">
-      <span>{label}</span>
+    <div className="flex items-center justify-between gap-2 py-2.5 text-sm text-slate-600 dark:text-slate-400">
+      <span className="min-w-0 flex-1 truncate">{label}</span>
       <span className="font-mono tabular-nums">{value}</span>
+      {onEdit && (
+        <button
+          onClick={onEdit}
+          title="Ajustar valor manualmente"
+          className="rounded p-1 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/40"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   );
 }
+
 
 function LedgerRow({ entry, onDelete }: { entry: WeekEntry; onDelete: () => void }) {
   const dt = new Date(entry.at);
