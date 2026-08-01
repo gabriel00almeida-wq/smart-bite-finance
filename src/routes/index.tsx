@@ -348,6 +348,19 @@ function Dashboard() {
   }
 
   function handleWeekChangeFromChat(data: WeekData, patch: WeekPatch): boolean {
+    const rateiosRemovidos = patch.removerRateios ?? [];
+    if (rateiosRemovidos.length > 0 && range?.from) {
+      removeMonthlyAllocationsUntilYearEnd(rateiosRemovidos, range.from);
+    }
+    const remocoes = patch.remocoes ?? [];
+    if (remocoes.length > 0 && isAggregated) {
+      for (const entry of matchedWeeks) {
+        saveWeek(entry.key, applyRemovals(entry.data, remocoes));
+      }
+      setHistoryTick((t) => t + 1);
+      return true;
+    }
+
     const allocations = patch.rateiosMensais ?? [];
     if (allocations.length > 0 && range?.from) {
       if (!isAggregated) saveWeek(key, data);
@@ -355,6 +368,11 @@ function Dashboard() {
         source: "chat",
         note: `Rateio mensal solicitado pelo Cérebro · ${rangeLabel}`,
       });
+      setHistoryTick((t) => t + 1);
+      return true;
+    }
+    if (rateiosRemovidos.length > 0) {
+      if (!isAggregated) saveWeek(key, data);
       setHistoryTick((t) => t + 1);
       return true;
     }
@@ -375,6 +393,38 @@ function Dashboard() {
     setHistoryTick((t) => t + 1);
     return true;
   }
+
+  // ---- Edição manual de linhas da DRE (sem IA) ----
+  const [manualEdit, setManualEdit] = useState<
+    { label: string; target: ManualTarget; valor: number } | null
+  >(null);
+  const [manualValue, setManualValue_] = useState("");
+
+  function openManualEdit(label: string, target: ManualTarget, valor: number) {
+    setManualEdit({ label, target, valor });
+    setManualValue_(String(valor ?? 0));
+  }
+
+  function commitManualEdit() {
+    if (!manualEdit) return;
+    const parsed = Number(manualValue.replace(/\./g, "").replace(",", "."));
+    const v = Number.isFinite(parsed) ? parsed : 0;
+    if (isAggregated) {
+      // aplica na semana de fechamento do período consolidado
+      const closing = matchedWeeks.reduce((latest, e) =>
+        e.startDate > latest.startDate ? e : latest,
+      );
+      saveWeek(closing.key, setManualValue(closing.data, manualEdit.target, v));
+      setHistoryTick((t) => t + 1);
+    } else {
+      const next = setManualValue(week, manualEdit.target, v);
+      saveWeek(key, next);
+      setWeek(next);
+      setHistoryTick((t) => t + 1);
+    }
+    setManualEdit(null);
+  }
+
 
   function handleDeleteWeek(k: string) {
     if (typeof window !== "undefined" && !window.confirm("Excluir esta apuração?")) return;
