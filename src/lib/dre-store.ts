@@ -167,7 +167,190 @@ export type WeekPatch = {
   impostoPagoEm?: string;
   estoqueValor?: number;
   rateiosMensais?: MonthlyAllocation[];
+  remocoes?: RemovalRequest[];
+  removerRateios?: string[];
 };
+
+export type RemovalScope =
+  | "fixo"
+  | "marketing"
+  | "promocao"
+  | "cmv"
+  | "embalagens"
+  | "frete"
+  | "taxaPagamento"
+  | "estoque";
+
+export type RemovalRequest = {
+  escopo: RemovalScope;
+  label?: string;
+  valor?: number; // se omitido, zera/remove a linha inteira
+};
+
+function labelMatches(a: string, b: string): boolean {
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\(rateio\)/g, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  const x = norm(a);
+  const y = norm(b);
+  if (!x || !y) return false;
+  return x === y || x.includes(y) || y.includes(x);
+}
+
+function removeLineItems(list: LineItem[], label?: string, valor?: number): LineItem[] {
+  if (!label) return [];
+  return list
+    .map((item) =>
+      labelMatches(item.label, label)
+        ? { ...item, valor: valor !== undefined ? Math.max(0, item.valor - valor) : 0 }
+        : item,
+    )
+    .filter((item) => item.valor > 0);
+}
+
+/** Remove lançamentos pedidos pelo usuário no chat (ex.: "tira a maquininha do rateio"). */
+export function applyRemovals(w: WeekData, remocoes: RemovalRequest[]): WeekData {
+  const next: WeekData = {
+    ...w,
+    channels: w.channels.map((c) => ({ ...c })),
+    fixos: w.fixos.map((f) => ({ ...f })),
+    marketing: w.marketing.map((f) => ({ ...f })),
+    promocoes: w.promocoes.map((f) => ({ ...f })),
+    ledger: [...(w.ledger ?? [])],
+  };
+  for (const r of remocoes) {
+    switch (r.escopo) {
+      case "fixo":
+        next.fixos = removeLineItems(next.fixos, r.label, r.valor);
+        break;
+      case "marketing":
+        next.marketing = removeLineItems(next.marketing, r.label, r.valor);
+        break;
+      case "promocao":
+        next.promocoes = removeLineItems(next.promocoes, r.label, r.valor);
+        break;
+      case "cmv":
+        next.cmv = r.valor !== undefined ? Math.max(0, next.cmv - r.valor) : 0;
+        break;
+      case "embalagens":
+        next.embalagens = r.valor !== undefined ? Math.max(0, next.embalagens - r.valor) : 0;
+        break;
+      case "frete":
+        next.freteEntregador =
+          r.valor !== undefined ? Math.max(0, next.freteEntregador - r.valor) : 0;
+        break;
+      case "taxaPagamento":
+        next.taxaPagamento = r.valor !== undefined ? Math.max(0, next.taxaPagamento - r.valor) : 0;
+        break;
+      case "estoque":
+        next.estoqueValor = 0;
+        break;
+    }
+    if (r.label) {
+      next.ledger = (next.ledger ?? []).filter((e) => !labelMatches(e.label, r.label!));
+    }
+  }
+  return next;
+}
+
+/**
+ * Remove um rateio mensal de TODAS as semanas salvas a partir da data informada
+ * até 31/12 do mesmo ano (desfaz applyMonthlyAllocationsUntilYearEnd).
+ */
+export function removeMonthlyAllocationsUntilYearEnd(labels: string[], startDate: Date): number {
+  if (typeof window === "undefined" || labels.length === 0) return 0;
+  const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+  const end = new Date(start.getFullYear(), 11, 31);
+  let touched = 0;
+  for (const entry of listSavedWeeks()) {
+    if (entry.startDate < new Date(start.getFullYear(), start.getMonth(), 1)) continue;
+    if (entry.startDate > end) continue;
+    let data = entry.data;
+    let changed = false;
+    for (const label of labels) {
+      const before = JSON.stringify([data.fixos, data.marketing, data.promocoes]);
+      data = applyRemovals(data, [
+        { escopo: "fixo", label },
+        { escopo: "marketing", label },
+        { escopo: "promocao", label },
+      ]);
+      if (JSON.stringify([data.fixos, data.marketing, data.promocoes]) !== before) changed = true;
+    }
+    if (changed) {
+      saveWeek(entry.key, data);
+      touched++;
+    }
+  }
+  return touched;
+}
+
+/** Ajuste manual de um valor da DRE (sem IA). */
+export type ManualTarget =
+  | { kind: "cmv" | "embalagens" | "frete" | "taxaPagamento" | "estoque" | "aliquota" | "impostoPagoValor" | "pedidos" }
+  | { kind: "canal"; nome: string; campo: "receita" | "pedidos" | "taxas" | "descontos" }
+  | { kind: "linha"; lista: "fixos" | "marketing" | "promocoes"; label: string };
+
+export function setManualValue(w: WeekData, target: ManualTarget, valor: number): WeekData {
+  const v = Math.max(0, Number.isFinite(valor) ? valor : 0);
+  const next: WeekData = {
+    ...w,
+    channels: w.channels.map((c) => ({ ...c })),
+    fixos: w.fixos.map((f) => ({ ...f })),
+    marketing: w.marketing.map((f) => ({ ...f })),
+    promocoes: w.promocoes.map((f) => ({ ...f })),
+    ledger: [...(w.ledger ?? [])],
+  };
+  if (target.kind === "canal") {
+    const idx = next.channels.findIndex((c) => c.nome === target.nome);
+    if (idx >= 0) next.channels[idx] = { ...next.channels[idx], [target.campo]: v };
+    return next;
+  }
+  if (target.kind === "linha") {
+    const list = next[target.lista];
+    const idx = list.findIndex((i) => i.label === target.label);
+    if (idx >= 0) {
+      if (v === 0) next[target.lista] = list.filter((_, i) => i !== idx);
+      else next[target.lista] = list.map((i, k) => (k === idx ? { ...i, valor: v } : i));
+    } else if (v > 0) {
+      next[target.lista] = [...list, { label: target.label, valor: v }];
+    }
+    return next;
+  }
+  switch (target.kind) {
+    case "cmv":
+      next.cmv = v;
+      break;
+    case "embalagens":
+      next.embalagens = v;
+      break;
+    case "frete":
+      next.freteEntregador = v;
+      break;
+    case "taxaPagamento":
+      next.taxaPagamento = v;
+      break;
+    case "estoque":
+      next.estoqueValor = v;
+      break;
+    case "aliquota":
+      next.simplesAliquota = v;
+      break;
+    case "impostoPagoValor":
+      next.impostoPagoValor = v;
+      next.impostoPago = v > 0;
+      break;
+    case "pedidos":
+      next.totalPedidosOverride = v > 0 ? v : undefined;
+      break;
+  }
+  return next;
+}
+
 
 export function applyMonthlyAllocationsUntilYearEnd(
   allocations: MonthlyAllocation[],
