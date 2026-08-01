@@ -17,10 +17,14 @@ const AnalyzeSchema = z.object({
   }),
 });
 
-async function callGateway(body: unknown) {
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) throw new Error("LOVABLE_API_KEY não configurada");
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+// Groq (OpenAI-compatible). Vision-capable model lê imagens; fallback texto.
+const GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+const GROQ_TEXT_MODEL = "llama-3.3-70b-versatile";
+
+async function callGateway(body: Record<string, unknown>) {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) throw new Error("GROQ_API_KEY não configurada");
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -31,10 +35,11 @@ async function callGateway(body: unknown) {
   if (!res.ok) {
     const txt = await res.text();
     // Sem mensagens genéricas: expõe o erro técnico exato do provedor
-    throw new Error(`[AI Gateway HTTP ${res.status} ${res.statusText}]\n${txt}`);
+    throw new Error(`[Groq HTTP ${res.status} ${res.statusText}]\n${txt}`);
   }
   return res.json();
 }
+
 
 export const analyzeDre = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => AnalyzeSchema.parse(data))
