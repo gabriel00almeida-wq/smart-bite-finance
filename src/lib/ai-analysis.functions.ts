@@ -159,36 +159,6 @@ Usuário: "Rateie R$ 6.200 de folha nos dias do mês até dezembro"
 → { "reply": "Folha mensal de R$ 6.200 será rateada por dia até dezembro.", "patch": { "rateiosMensais": [{ "label": "Folha salarial", "valorMensal": 6200, "categoria": "fixo" }] } }`;
 
 
-// build tag: force-redeploy 2026-08-01 (lê GEMINI_API_KEY sempre em runtime)
-async function callGemini(body: unknown) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY não configurada");
-  const model = "gemini-2.0-flash";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "x-goog-api-key": apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-  } catch (e) {
-    // Falha de rede: expõe o erro técnico original
-    throw new Error(
-      `[fetch falhou] POST ${url}\n${e instanceof Error ? `${e.name}: ${e.message}` : String(e)}`,
-    );
-  }
-  if (!res.ok) {
-    const txt = await res.text();
-    // Sem mensagens genéricas: retorna o corpo exato devolvido pelo Google
-    throw new Error(`[Gemini HTTP ${res.status} ${res.statusText}] ${model}\n${txt}`);
-  }
-  return res.json();
-}
-
 export const chatCerebro = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => ChatSchema.parse(data))
   .handler(async ({ data }) => {
@@ -196,33 +166,31 @@ export const chatCerebro = createServerFn({ method: "POST" })
 DRE atual (JSON):
 ${JSON.stringify(data.currentWeek, null, 2)}`;
 
-    const contents = data.messages.map((m) => {
-      const parts: Array<Record<string, unknown>> = [
-        { text: m.content || (m.images?.length ? "(imagem em anexo)" : "") },
-      ];
+    const messages: Array<Record<string, unknown>> = [
+      { role: "system", content: `${SYSTEM_PROMPT}\n\n${contextMsg}` },
+    ];
+
+    for (const m of data.messages) {
       if (m.role === "user" && m.images?.length) {
+        const parts: Array<Record<string, unknown>> = [
+          { type: "text", text: m.content || "(imagem em anexo)" },
+        ];
         for (const url of m.images) {
-          const match = /^data:([^;]+);base64,(.*)$/.exec(url);
-          if (match) {
-            parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
-          }
+          parts.push({ type: "image_url", image_url: { url } });
         }
+        messages.push({ role: "user", content: parts });
+      } else {
+        messages.push({ role: m.role, content: m.content });
       }
-      return { role: m.role === "assistant" ? "model" : "user", parts };
+    }
+
+    const json = await callGateway({
+      model: "google/gemini-3.6-flash",
+      messages,
+      response_format: { type: "json_object" },
     });
 
-    const json = await callGemini({
-      systemInstruction: {
-        parts: [{ text: SYSTEM_PROMPT }, { text: contextMsg }],
-      },
-      contents,
-      generationConfig: { responseMimeType: "application/json" },
-    });
-
-    const raw: string =
-      json.candidates?.[0]?.content?.parts
-        ?.map((p: { text?: string }) => p.text ?? "")
-        .join("") || "{}";
+    const raw: string = json.choices?.[0]?.message?.content ?? "{}";
 
     let parsed: { reply?: string; patch?: unknown } = {};
     try {
