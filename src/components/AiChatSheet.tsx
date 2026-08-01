@@ -37,6 +37,17 @@ const SUGGESTIONS = [
   "Faça uma análise completa da minha semana",
 ];
 
+function rawErrorText(e: unknown): string {
+  if (e instanceof Error) {
+    return [e.name ? `${e.name}: ${e.message}` : e.message, e.stack].filter(Boolean).join("\n");
+  }
+  try {
+    return JSON.stringify(e, null, 2);
+  } catch {
+    return String(e);
+  }
+}
+
 export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabel }: Props) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -148,7 +159,7 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
         },
       ]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao consultar a IA");
+      setError(rawErrorText(e));
     } finally {
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 30);
@@ -186,7 +197,7 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
         { role: "assistant", content: res.content },
       ]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao consultar a IA");
+      setError(rawErrorText(e));
     } finally {
       setLoading(false);
     }
