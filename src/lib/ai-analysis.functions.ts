@@ -176,8 +176,10 @@ ${JSON.stringify(data.currentWeek, null, 2)}`;
       { role: "system", content: `${SYSTEM_PROMPT}\n\n${contextMsg}` },
     ];
 
+    let hasImages = false;
     for (const m of data.messages) {
       if (m.role === "user" && m.images?.length) {
+        hasImages = true;
         const parts: Array<Record<string, unknown>> = [
           { type: "text", text: m.content || "(imagem em anexo)" },
         ];
@@ -191,10 +193,11 @@ ${JSON.stringify(data.currentWeek, null, 2)}`;
     }
 
     const json = await callGateway({
-      model: "google/gemini-3.6-flash",
+      model: hasImages ? GROQ_VISION_MODEL : GROQ_TEXT_MODEL,
       messages,
       response_format: { type: "json_object" },
     });
+
 
     const raw: string = json.choices?.[0]?.message?.content ?? "{}";
 
