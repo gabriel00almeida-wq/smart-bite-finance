@@ -17,19 +17,17 @@ const AnalyzeSchema = z.object({
   }),
 });
 
-// Groq (OpenAI-compatible). Vision-capable model lê imagens; fallback texto.
-// llama-3.2-11b-vision-preview foi descomissionado pela Groq; o modelo de visão
-// disponível na conta é qwen/qwen3.6-27b (verificado via /v1/models).
-const GROQ_VISION_MODEL = "qwen/qwen3.6-27b";
-const GROQ_TEXT_MODEL = "llama-3.3-70b-versatile";
+// IA do Lovable (gateway OpenAI-compatible). Gemini 3.6 Flash lê texto e imagens.
+const GROQ_VISION_MODEL = "google/gemini-3.6-flash";
+const GROQ_TEXT_MODEL = "google/gemini-3.6-flash";
 
 async function callGateway(body: Record<string, unknown>) {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) throw new Error("GROQ_API_KEY não configurada");
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const apiKey = process.env.LOVABLE_API_KEY;
+  if (!apiKey) throw new Error("LOVABLE_API_KEY não configurada");
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      "Lovable-API-Key": apiKey,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
@@ -37,10 +35,11 @@ async function callGateway(body: Record<string, unknown>) {
   if (!res.ok) {
     const txt = await res.text();
     // Sem mensagens genéricas: expõe o erro técnico exato do provedor
-    throw new Error(`[Groq HTTP ${res.status} ${res.statusText}]\n${txt}`);
+    throw new Error(`[Lovable AI HTTP ${res.status} ${res.statusText}]\n${txt}`);
   }
   return res.json();
 }
+
 
 
 export const analyzeDre = createServerFn({ method: "POST" })
