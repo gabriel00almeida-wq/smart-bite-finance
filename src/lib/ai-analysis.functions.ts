@@ -18,7 +18,9 @@ const AnalyzeSchema = z.object({
 });
 
 // Groq (OpenAI-compatible). Vision-capable model lê imagens; fallback texto.
-const GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+// llama-3.2-11b-vision-preview foi descomissionado pela Groq; o modelo de visão
+// disponível na conta é qwen/qwen3.6-27b (verificado via /v1/models).
+const GROQ_VISION_MODEL = "qwen/qwen3.6-27b";
 const GROQ_TEXT_MODEL = "llama-3.3-70b-versatile";
 
 async function callGateway(body: Record<string, unknown>) {
