@@ -76,7 +76,11 @@ import {
   weeksInRange,
   aggregateWeeks,
   applyMonthlyAllocationsUntilYearEnd,
+  removeMonthlyAllocationsUntilYearEnd,
+  applyRemovals,
+  setManualValue,
   deleteWeek,
+  type ManualTarget,
   type WeekData,
   type SavedWeekEntry,
 } from "@/lib/dre-store";
