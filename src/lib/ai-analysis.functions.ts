@@ -134,9 +134,16 @@ Você DEVE responder SEMPRE em JSON puro, sem markdown, sem cercas, no formato:
       "label": string,
       "valorMensal": number,
       "categoria": "fixo" | "marketing"
-    }]
+    }],
+    "remocoes": [{
+      "escopo": "fixo" | "marketing" | "promocao" | "cmv" | "embalagens" | "frete" | "taxaPagamento" | "estoque",
+      "label"?: string,
+      "valor"?: number
+    }],
+    "removerRateios": [string]
   }
 }
+
 
 Regras do patch:
 - Só inclua CAMPOS que o usuário mencionou. Se não mencionou, OMITA (não use 0).
