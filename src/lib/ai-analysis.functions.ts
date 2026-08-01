@@ -134,9 +134,16 @@ Você DEVE responder SEMPRE em JSON puro, sem markdown, sem cercas, no formato:
       "label": string,
       "valorMensal": number,
       "categoria": "fixo" | "marketing"
-    }]
+    }],
+    "remocoes": [{
+      "escopo": "fixo" | "marketing" | "promocao" | "cmv" | "embalagens" | "frete" | "taxaPagamento" | "estoque",
+      "label"?: string,
+      "valor"?: number
+    }],
+    "removerRateios": [string]
   }
 }
+
 
 Regras do patch:
 - Só inclua CAMPOS que o usuário mencionou. Se não mencionou, OMITA (não use 0).
@@ -150,6 +157,10 @@ Regras do patch:
 - RATEIO MENSAL: quando o usuário disser "por mês", "mensal", "rateie nos dias do mês", "rateio em 31 dias" ou pedir para distribuir até dezembro, NÃO envie o valor inteiro em "fixos" ou "marketing". Envie em "rateiosMensais". O sistema fará o rateio exato por dia de cada mês, desde o início do período selecionado até 31 de dezembro do mesmo ano.
 - Classifique folha salarial, aluguel, energia, equipamentos, investimentos e compras de bens (ex.: geladeira nova) como categoria "fixo". Classifique mídia, anúncios, influenciadores e verba de marketing como "marketing".
 - Em "rateiosMensais", "valorMensal" é o valor integral de UMA competência mensal. Não divida por 31 e não multiplique pelos meses; o sistema calcula isso.
+- REMOÇÃO / CORREÇÃO: quando o usuário pedir para TIRAR, REMOVER, EXCLUIR, CANCELAR, ESTORNAR ou CORRIGIR um lançamento (ex.: "tira a compra da maquininha", "remove o rateio da maquininha", "cancela o marketing de 500"), você DEVE usar "remocoes" (e "removerRateios" quando o valor tiver sido rateado por mês). NUNCA responda apenas confirmando sem enviar o patch de remoção, e NUNCA envie valor negativo em "fixos"/"marketing"/"promocoes".
+  - "remocoes": cada item tem "escopo" (onde o valor está) e "label" (o rótulo do lançamento, ex.: "Maquininha"). Omita "valor" para apagar a linha inteira; informe "valor" para abater só uma parte.
+  - "removerRateios": lista de rótulos cujo RATEIO MENSAL deve ser desfeito em todas as semanas até dezembro (ex.: ["Maquininha"]). Use sempre que o lançamento tiver sido criado como rateio ("(rateio)") ou o usuário disser "tira do rateio".
+  - Exemplo: "tira a compra da maquininha do rateio" → { "reply": "Removi o rateio da maquininha de todas as semanas até dezembro.", "patch": { "removerRateios": ["Maquininha"], "remocoes": [{ "escopo": "fixo", "label": "Maquininha" }] } }
 - Se o usuário só quer conversar, devolva "patch": {}.
 - NUNCA invente dados.
 - Se o usuário enviar IMAGENS (prints de painel, notas fiscais, comprovantes), LEIA os números visíveis e extraia. Se for comprovante de DAS/imposto, marque impostoPago: true.

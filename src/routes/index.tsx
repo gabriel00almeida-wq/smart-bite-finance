@@ -65,6 +65,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import logoAsset from "@/assets/itadaki-logo.png.asset.json";
 import {
   computeDre,
@@ -76,7 +83,11 @@ import {
   weeksInRange,
   aggregateWeeks,
   applyMonthlyAllocationsUntilYearEnd,
+  removeMonthlyAllocationsUntilYearEnd,
+  applyRemovals,
+  setManualValue,
   deleteWeek,
+  type ManualTarget,
   type WeekData,
   type SavedWeekEntry,
 } from "@/lib/dre-store";
@@ -222,14 +233,32 @@ function DreRow({
   );
 }
 
-function SubRow({ label, value }: { label: string; value: string }) {
+function SubRow({
+  label,
+  value,
+  onEdit,
+}: {
+  label: string;
+  value: string;
+  onEdit?: () => void;
+}) {
   return (
-    <div className="flex items-center justify-between py-2.5 text-sm text-slate-600 dark:text-slate-400">
-      <span>{label}</span>
+    <div className="flex items-center justify-between gap-2 py-2.5 text-sm text-slate-600 dark:text-slate-400">
+      <span className="min-w-0 flex-1 truncate">{label}</span>
       <span className="font-mono tabular-nums">{value}</span>
+      {onEdit && (
+        <button
+          onClick={onEdit}
+          title="Ajustar valor manualmente"
+          className="rounded p-1 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/40"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   );
 }
+
 
 function LedgerRow({ entry, onDelete }: { entry: WeekEntry; onDelete: () => void }) {
   const dt = new Date(entry.at);
@@ -348,6 +377,19 @@ function Dashboard() {
   }
 
   function handleWeekChangeFromChat(data: WeekData, patch: WeekPatch): boolean {
+    const rateiosRemovidos = patch.removerRateios ?? [];
+    if (rateiosRemovidos.length > 0 && range?.from) {
+      removeMonthlyAllocationsUntilYearEnd(rateiosRemovidos, range.from);
+    }
+    const remocoes = patch.remocoes ?? [];
+    if (remocoes.length > 0 && isAggregated) {
+      for (const entry of matchedWeeks) {
+        saveWeek(entry.key, applyRemovals(entry.data, remocoes));
+      }
+      setHistoryTick((t) => t + 1);
+      return true;
+    }
+
     const allocations = patch.rateiosMensais ?? [];
     if (allocations.length > 0 && range?.from) {
       if (!isAggregated) saveWeek(key, data);
@@ -355,6 +397,11 @@ function Dashboard() {
         source: "chat",
         note: `Rateio mensal solicitado pelo Cérebro · ${rangeLabel}`,
       });
+      setHistoryTick((t) => t + 1);
+      return true;
+    }
+    if (rateiosRemovidos.length > 0) {
+      if (!isAggregated) saveWeek(key, data);
       setHistoryTick((t) => t + 1);
       return true;
     }
@@ -375,6 +422,38 @@ function Dashboard() {
     setHistoryTick((t) => t + 1);
     return true;
   }
+
+  // ---- Edição manual de linhas da DRE (sem IA) ----
+  const [manualEdit, setManualEdit] = useState<
+    { label: string; target: ManualTarget; valor: number } | null
+  >(null);
+  const [manualValue, setManualValue_] = useState("");
+
+  function openManualEdit(label: string, target: ManualTarget, valor: number) {
+    setManualEdit({ label, target, valor });
+    setManualValue_(String(valor ?? 0));
+  }
+
+  function commitManualEdit() {
+    if (!manualEdit) return;
+    const parsed = Number(manualValue.replace(/\./g, "").replace(",", "."));
+    const v = Number.isFinite(parsed) ? parsed : 0;
+    if (isAggregated) {
+      // aplica na semana de fechamento do período consolidado
+      const closing = matchedWeeks.reduce((latest, e) =>
+        e.startDate > latest.startDate ? e : latest,
+      );
+      saveWeek(closing.key, setManualValue(closing.data, manualEdit.target, v));
+      setHistoryTick((t) => t + 1);
+    } else {
+      const next = setManualValue(week, manualEdit.target, v);
+      saveWeek(key, next);
+      setWeek(next);
+      setHistoryTick((t) => t + 1);
+    }
+    setManualEdit(null);
+  }
+
 
   function handleDeleteWeek(k: string) {
     if (typeof window !== "undefined" && !window.confirm("Excluir esta apuração?")) return;
@@ -734,20 +813,67 @@ function Dashboard() {
                       key={c.nome}
                       label={`${c.nome} (${dre.receitaBruta > 0 ? ((c.receita / dre.receitaBruta) * 100).toFixed(1) : 0}%)`}
                       value={currency(c.receita)}
+                      onEdit={() =>
+                        openManualEdit(`Receita — ${c.nome}`, { kind: "canal", nome: c.nome, campo: "receita" }, c.receita)
+                      }
                     />
                   ))}
                 {dre.canais.length === 0 && <SubRow label="—" value={currency(0)} />}
               </DreRow>
               <DreRow label="Custos Variáveis" value={`- ${currency(dre.custosVariaveis)}`}>
                 <SubRow label="CMV Contábil (insumos + embalagens)" value={`- ${currency(dre.cmvContabil)} · ${dre.cmvContabilPct.toFixed(1)}% da receita bruta`} />
-                <SubRow label="  ↳ Insumos" value={`- ${currency(dre.cmv)}`} />
-                <SubRow label="  ↳ Embalagens" value={`- ${currency(dre.embalagens)}`} />
+                <SubRow
+                  label="  ↳ Insumos"
+                  value={`- ${currency(dre.cmv)}`}
+                  onEdit={() => openManualEdit("CMV / insumos", { kind: "cmv" }, dre.cmv)}
+                />
+                <SubRow
+                  label="  ↳ Embalagens"
+                  value={`- ${currency(dre.embalagens)}`}
+                  onEdit={() => openManualEdit("Embalagens", { kind: "embalagens" }, dre.embalagens)}
+                />
                 <SubRow label="CMV Financeiro (sobre receita líquida)" value={`${dre.cmvFinanceiroPct.toFixed(1)}% · líq. ${currency(dre.receitaLiquida)}`} />
-                <SubRow label={`CMV Real (após estoque${dre.estoqueValor > 0 ? ` de ${currency(dre.estoqueValor)}` : ""})`} value={`- ${currency(dre.cmvReal)} · ${dre.cmvRealPct.toFixed(1)}%`} />
-                <SubRow label="Frete / entregador" value={`- ${currency(dre.freteEntregador)}`} />
+                <SubRow
+                  label={`CMV Real (após estoque${dre.estoqueValor > 0 ? ` de ${currency(dre.estoqueValor)}` : ""})`}
+                  value={`- ${currency(dre.cmvReal)} · ${dre.cmvRealPct.toFixed(1)}%`}
+                  onEdit={() => openManualEdit("Estoque final (abate no CMV Real)", { kind: "estoque" }, dre.estoqueValor)}
+                />
+                <SubRow
+                  label="Frete / entregador"
+                  value={`- ${currency(dre.freteEntregador)}`}
+                  onEdit={() => openManualEdit("Frete / entregador", { kind: "frete" }, dre.freteEntregador)}
+                />
                 <SubRow label="Taxas / comissões dos apps" value={`- ${currency(dre.taxasMarketplace)}`} />
+                {week.channels
+                  .filter((c) => c.taxas > 0 || c.receita > 0)
+                  .map((c) => (
+                    <SubRow
+                      key={`taxa-${c.nome}`}
+                      label={`  ↳ Taxa ${c.nome}`}
+                      value={`- ${currency(c.taxas)}`}
+                      onEdit={() =>
+                        openManualEdit(`Taxa do app — ${c.nome}`, { kind: "canal", nome: c.nome, campo: "taxas" }, c.taxas)
+                      }
+                    />
+                  ))}
                 <SubRow label="Descontos concedidos" value={`- ${currency(dre.descontosTotal)}`} />
-                <SubRow label="Taxas de cartão / pagamento" value={`- ${currency(dre.taxasPagamento)}`} />
+                {week.channels
+                  .filter((c) => c.descontos > 0 || c.receita > 0)
+                  .map((c) => (
+                    <SubRow
+                      key={`desc-${c.nome}`}
+                      label={`  ↳ Descontos ${c.nome}`}
+                      value={`- ${currency(c.descontos)}`}
+                      onEdit={() =>
+                        openManualEdit(`Descontos — ${c.nome}`, { kind: "canal", nome: c.nome, campo: "descontos" }, c.descontos)
+                      }
+                    />
+                  ))}
+                <SubRow
+                  label="Taxas de cartão / pagamento"
+                  value={`- ${currency(dre.taxasPagamento)}`}
+                  onEdit={() => openManualEdit("Taxa de cartão / pagamento", { kind: "taxaPagamento" }, dre.taxasPagamento)}
+                />
               </DreRow>
               <DreRow
                 label="Margem de Contribuição"
@@ -757,7 +883,14 @@ function Dashboard() {
                 {week.fixos
                   .filter((f) => f.valor > 0)
                   .map((f, i) => (
-                    <SubRow key={i} label={f.label} value={`- ${currency(f.valor)}`} />
+                    <SubRow
+                      key={i}
+                      label={f.label}
+                      value={`- ${currency(f.valor)}`}
+                      onEdit={() =>
+                        openManualEdit(f.label, { kind: "linha", lista: "fixos", label: f.label }, f.valor)
+                      }
+                    />
                   ))}
                 {dre.fixosTotal === 0 && <SubRow label="—" value={currency(0)} />}
               </DreRow>
@@ -765,7 +898,14 @@ function Dashboard() {
                 {week.marketing
                   .filter((f) => f.valor > 0)
                   .map((f, i) => (
-                    <SubRow key={i} label={f.label} value={`- ${currency(f.valor)}`} />
+                    <SubRow
+                      key={i}
+                      label={f.label}
+                      value={`- ${currency(f.valor)}`}
+                      onEdit={() =>
+                        openManualEdit(f.label, { kind: "linha", lista: "marketing", label: f.label }, f.valor)
+                      }
+                    />
                   ))}
                 {dre.marketingTotal === 0 && <SubRow label="—" value={currency(0)} />}
               </DreRow>
@@ -773,7 +913,14 @@ function Dashboard() {
                 {week.promocoes
                   .filter((f) => f.valor > 0)
                   .map((f, i) => (
-                    <SubRow key={i} label={f.label} value={`- ${currency(f.valor)}`} />
+                    <SubRow
+                      key={i}
+                      label={f.label}
+                      value={`- ${currency(f.valor)}`}
+                      onEdit={() =>
+                        openManualEdit(f.label, { kind: "linha", lista: "promocoes", label: f.label }, f.valor)
+                      }
+                    />
                   ))}
                 {dre.promocoesTotal === 0 && <SubRow label="—" value={currency(0)} />}
               </DreRow>
@@ -788,14 +935,20 @@ function Dashboard() {
                 <SubRow
                   label={`Alíquota aplicada`}
                   value={`${dre.simplesAliquota.toFixed(2)}% sobre ${currency(dre.receitaBruta)}`}
+                  onEdit={() => openManualEdit("Alíquota do Simples (%)", { kind: "aliquota" }, dre.simplesAliquota)}
                 />
                 <SubRow label="Provisão do período" value={currency(dre.impostoProvisao)} />
                 {dre.impostoPago ? (
-                  <SubRow label="Valor pago (abatido)" value={`- ${currency(dre.impostoDeduzido)}`} />
+                  <SubRow
+                    label="Valor pago (abatido)"
+                    value={`- ${currency(dre.impostoDeduzido)}`}
+                    onEdit={() => openManualEdit("Imposto pago (R$)", { kind: "impostoPagoValor" }, dre.impostoDeduzido)}
+                  />
                 ) : (
                   <SubRow
                     label="Status"
                     value="Aguardando comprovante — não abatido no lucro"
+                    onEdit={() => openManualEdit("Imposto pago (R$)", { kind: "impostoPagoValor" }, 0)}
                   />
                 )}
                 {!dre.impostoPago && dre.impostoProvisao > 0 && (
@@ -805,6 +958,7 @@ function Dashboard() {
                   />
                 )}
               </DreRow>
+
               <DreRow label="Lucro Líquido" value={currency(dre.lucroLiquido)} highlight />
             </Accordion>
           </section>
@@ -1116,6 +1270,38 @@ function Dashboard() {
         onWeekChange={handleWeekChangeFromChat}
         periodLabel={rangeLabel}
       />
+
+      {/* Ajuste manual de linha da DRE (sem IA / sem créditos) */}
+      <Dialog open={!!manualEdit} onOpenChange={(o) => !o && setManualEdit(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base">Ajustar valor</DialogTitle>
+            <DialogDescription className="text-xs">
+              {manualEdit?.label} · {rangeLabel}
+              {isAggregated ? " · será gravado na semana de fechamento do período" : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            autoFocus
+            inputMode="decimal"
+            value={manualValue}
+            onChange={(e) => setManualValue_(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitManualEdit();
+            }}
+            placeholder="0,00"
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setManualEdit(null)}>
+              Cancelar
+            </Button>
+            <Button className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={commitManualEdit}>
+              Salvar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
