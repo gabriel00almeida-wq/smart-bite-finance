@@ -1263,6 +1263,38 @@ function Dashboard() {
         onWeekChange={handleWeekChangeFromChat}
         periodLabel={rangeLabel}
       />
+
+      {/* Ajuste manual de linha da DRE (sem IA / sem créditos) */}
+      <Dialog open={!!manualEdit} onOpenChange={(o) => !o && setManualEdit(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base">Ajustar valor</DialogTitle>
+            <DialogDescription className="text-xs">
+              {manualEdit?.label} · {rangeLabel}
+              {isAggregated ? " · será gravado na semana de fechamento do período" : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            autoFocus
+            inputMode="decimal"
+            value={manualValue}
+            onChange={(e) => setManualValue_(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitManualEdit();
+            }}
+            placeholder="0,00"
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setManualEdit(null)}>
+              Cancelar
+            </Button>
+            <Button className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={commitManualEdit}>
+              Salvar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
