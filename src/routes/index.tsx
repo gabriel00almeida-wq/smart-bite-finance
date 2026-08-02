@@ -705,6 +705,7 @@ function Dashboard() {
             <KpiCard
               title="Ticket Médio"
               value={currency(dre.ticketMedio)}
+              subtitle={`${dre.totalPedidos.toLocaleString("pt-BR")} pedidos no período`}
               icon={TrendingUp}
             />
           </section>
