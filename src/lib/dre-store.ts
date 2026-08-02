@@ -897,10 +897,16 @@ export function aggregateWeeks(weeks: WeekData[]): WeekData {
     weeks.find((w) => w.simplesAliquota > 0)?.simplesAliquota ??
     weeks[0].simplesAliquota ??
     0;
-  const totalOverride = weeks.reduce(
-    (s, w) => s + (w.totalPedidosOverride || 0),
-    0,
-  );
+  // Pedidos: por semana usa o override quando existir, senão a soma dos canais.
+  // (Somar apenas os overrides zerava as semanas sem override e inflava o ticket médio.)
+  const totalOverride = weeks.reduce((s, w) => {
+    const canais = w.channels.reduce((a, c) => a + (c.pedidos || 0), 0);
+    const efetivo =
+      w.totalPedidosOverride && w.totalPedidosOverride > 0
+        ? w.totalPedidosOverride
+        : canais;
+    return s + efetivo;
+  }, 0);
   const ledger = weeks.flatMap((w) => w.ledger ?? []);
   return {
     channels: mergeChannelsSum(weeks.map((w) => w.channels)),

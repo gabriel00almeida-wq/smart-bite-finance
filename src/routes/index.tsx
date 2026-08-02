@@ -141,6 +141,7 @@ const secos = [
 function KpiCard({
   title,
   value,
+  subtitle,
   icon: Icon,
   trend,
   trendLabel,
@@ -149,6 +150,7 @@ function KpiCard({
 }: {
   title: string;
   value: string;
+  subtitle?: string;
   icon: React.ElementType;
   trend?: boolean;
   trendLabel?: string;
@@ -167,6 +169,11 @@ function KpiCard({
       <div className="mt-4 text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
         {value}
       </div>
+      {subtitle && (
+        <div className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+          {subtitle}
+        </div>
+      )}
       {trend && (
         <div className="mt-3 flex items-center gap-2">
           <span
@@ -698,6 +705,7 @@ function Dashboard() {
             <KpiCard
               title="Ticket Médio"
               value={currency(dre.ticketMedio)}
+              subtitle={`${dre.totalPedidos.toLocaleString("pt-BR")} pedidos no período`}
               icon={TrendingUp}
             />
           </section>
