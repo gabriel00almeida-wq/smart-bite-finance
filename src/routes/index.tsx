@@ -141,6 +141,7 @@ const secos = [
 function KpiCard({
   title,
   value,
+  subtitle,
   icon: Icon,
   trend,
   trendLabel,
@@ -149,6 +150,7 @@ function KpiCard({
 }: {
   title: string;
   value: string;
+  subtitle?: string;
   icon: React.ElementType;
   trend?: boolean;
   trendLabel?: string;
