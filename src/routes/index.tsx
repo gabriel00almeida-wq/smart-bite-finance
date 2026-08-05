@@ -265,12 +265,14 @@ function SubRowGroup({
   entries,
   onEdit,
   countOnly,
+  onDeleteEntry,
 }: {
   label: string;
   value: string;
   entries: WeekEntry[];
   onEdit?: () => void;
   countOnly?: boolean;
+  onDeleteEntry?: (entryId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const sorted = [...entries].sort((a, b) => a.at - b.at);
@@ -325,6 +327,16 @@ function SubRowGroup({
               <span className="shrink-0 font-mono tabular-nums text-slate-800 dark:text-slate-200">
                 {countOnly ? e.valor : currency(e.valor)}
               </span>
+              {onDeleteEntry && (
+                <button
+                  type="button"
+                  onClick={() => onDeleteEntry(e.id)}
+                  title="Apagar este lançamento"
+                  className="shrink-0 rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -332,6 +344,7 @@ function SubRowGroup({
     </div>
   );
 }
+
 
 function LedgerRow({ entry, onDelete }: { entry: WeekEntry; onDelete: () => void }) {
   const dt = new Date(entry.at);
