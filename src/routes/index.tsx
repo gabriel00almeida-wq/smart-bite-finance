@@ -438,6 +438,11 @@ function Dashboard() {
   const dre = useMemo(() => computeDre(week), [week]);
   const hasData = dre.receitaBruta > 0;
 
+  // Lançamentos individuais (ledger) por categoria — usados para discriminar a DRE
+  const ledgerBy = (cat: WeekEntry["categoria"]) =>
+    (week.ledger ?? []).filter((e) => e.categoria === cat && e.valor > 0);
+
+
   const [savedWeeks, setSavedWeeks] = useState<SavedWeekEntry[]>([]);
   useEffect(() => {
     setSavedWeeks(listSavedWeeks());
