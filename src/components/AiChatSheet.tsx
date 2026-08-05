@@ -58,12 +58,16 @@ function rawErrorText(e: unknown): string {
   }
 }
 
-export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabel }: Props) {
+export function AiChatSheet({ open, onOpenChange, week, onPatch, periodLabel, defaultDate }: Props) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [pendingImages, setPendingImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Data do lançamento — confirmada numa caixinha a cada mensagem enviada
+  const [entryDate, setEntryDate] = useState<Date>(() => defaultDate ?? new Date());
+  const [askDate, setAskDate] = useState<{ text: string; images: string[] } | null>(null);
+
   const chat = useServerFn(chatCerebro);
   const analyze = useServerFn(analyzeDre);
   const scrollRef = useRef<HTMLDivElement>(null);
