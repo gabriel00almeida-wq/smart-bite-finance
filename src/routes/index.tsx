@@ -266,6 +266,79 @@ function SubRow({
   );
 }
 
+/** Sub-linha da DRE com botão 🔽 para discriminar os lançamentos individuais do ledger. */
+function SubRowGroup({
+  label,
+  value,
+  entries,
+  onEdit,
+  countOnly,
+}: {
+  label: string;
+  value: string;
+  entries: WeekEntry[];
+  onEdit?: () => void;
+  countOnly?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const sorted = [...entries].sort((a, b) => a.at - b.at);
+  return (
+    <div className="py-1">
+      <div className="flex items-center justify-between gap-2 py-1.5 text-sm text-slate-600 dark:text-slate-400">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          disabled={sorted.length === 0}
+          title={sorted.length ? "Discriminar lançamentos" : "Nenhum lançamento detalhado"}
+          className="flex min-w-0 flex-1 items-center gap-1.5 text-left hover:text-slate-900 disabled:cursor-default disabled:opacity-60 dark:hover:text-white"
+        >
+          <ChevronDown
+            className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? "rotate-180" : ""} ${
+              sorted.length === 0 ? "opacity-25" : "text-emerald-600 dark:text-emerald-400"
+            }`}
+          />
+          <span className="truncate">{label}</span>
+          {sorted.length > 0 && (
+            <span className="shrink-0 rounded-full bg-slate-200/80 px-1.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+              {sorted.length}
+            </span>
+          )}
+        </button>
+        <span className="font-mono tabular-nums">{value}</span>
+        {onEdit && (
+          <button
+            onClick={onEdit}
+            title="Ajustar valor manualmente"
+            className="rounded p-1 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/40"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+      {open && sorted.length > 0 && (
+        <div className="mb-1 ml-5 space-y-1 border-l border-dashed border-slate-300 pl-3 dark:border-slate-700">
+          {sorted.map((e) => (
+            <div key={e.id} className="flex items-start justify-between gap-2 text-xs">
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-slate-700 dark:text-slate-300">{e.label}</div>
+                <div className="text-[10px] uppercase text-slate-400">
+                  {new Date(e.at).toLocaleDateString("pt-BR")} ·{" "}
+                  {new Date(e.at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · {e.source}
+                </div>
+              </div>
+              <span className="shrink-0 font-mono tabular-nums text-slate-800 dark:text-slate-200">
+                {countOnly ? e.valor : currency(e.valor)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
 
 function LedgerRow({ entry, onDelete }: { entry: WeekEntry; onDelete: () => void }) {
   const dt = new Date(entry.at);
