@@ -473,6 +473,7 @@ export function AiChatSheet({
           <Calendar
             mode="single"
             locale={ptBR}
+            weekStartsOn={1}
             selected={entryDate}
             onSelect={(d) => d && setEntryDate(d)}
             className="pointer-events-auto rounded-md border border-slate-200 p-2 dark:border-slate-800"

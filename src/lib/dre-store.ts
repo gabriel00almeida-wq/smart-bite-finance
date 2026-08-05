@@ -156,6 +156,11 @@ export type WeekPatch = {
   freteEntregador?: number;
   cmv?: number;
   taxaPagamento?: number;
+  /** Rótulos descritivos informados pelo usuário (ex: "Poços Food Service"). */
+  cmvLabel?: string;
+  embalagensLabel?: string;
+  freteLabel?: string;
+  taxaPagamentoLabel?: string;
   totalPedidosOverride?: number;
   fixos?: LineItem[];
   marketing?: LineItem[];
@@ -530,20 +535,20 @@ export function applyChatPatch(
     next.embalagens = (next.embalagens || 0) + patch.embalagens;
     newEntries.push({
       id: mkId(), at, source: src, categoria: "embalagens",
-      label: "Embalagens", valor: patch.embalagens, note: meta.note,
+      label: patch.embalagensLabel?.trim() || "Embalagens", valor: patch.embalagens, note: meta.note,
     });
   }
   if (patch.freteEntregador !== undefined && patch.freteEntregador > 0) {
     next.freteEntregador = (next.freteEntregador || 0) + patch.freteEntregador;
     newEntries.push({
       id: mkId(), at, source: src, categoria: "frete",
-      label: "Frete / entregador", valor: patch.freteEntregador, note: meta.note,
+      label: patch.freteLabel?.trim() || "Frete / entregador", valor: patch.freteEntregador, note: meta.note,
     });
   }
   if (patch.cmv !== undefined && patch.cmv > 0) {
     next.cmv = (next.cmv || 0) + patch.cmv;
-    // Se o usuário mencionou um label (ex: "Hortifruti"), tenta puxar da note
-    const inferredLabel = inferCmvLabel(meta.note) ?? "CMV / insumos";
+    // Prioriza o rótulo que a IA extraiu do texto do usuário (ex: "Poços Food Service")
+    const inferredLabel = patch.cmvLabel?.trim() || inferCmvLabel(meta.note) || "CMV / insumos";
     newEntries.push({
       id: mkId(), at, source: src, categoria: "cmv",
       label: inferredLabel, valor: patch.cmv, note: meta.note,
@@ -553,7 +558,7 @@ export function applyChatPatch(
     next.taxaPagamento = (next.taxaPagamento || 0) + patch.taxaPagamento;
     newEntries.push({
       id: mkId(), at, source: src, categoria: "taxaPagamento",
-      label: "Taxa de cartão / pagamento", valor: patch.taxaPagamento, note: meta.note,
+      label: patch.taxaPagamentoLabel?.trim() || "Taxa de cartão / pagamento", valor: patch.taxaPagamento, note: meta.note,
     });
   }
 
