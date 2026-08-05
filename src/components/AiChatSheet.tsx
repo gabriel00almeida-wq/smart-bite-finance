@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Brain, Camera, ImagePlus, Loader2, Send, Sparkles, X } from "lucide-react";
+import { Brain, CalendarDays, Camera, ImagePlus, Loader2, Send, Sparkles, X } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 import {
   Sheet,
@@ -9,25 +11,37 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useServerFn } from "@tanstack/react-start";
 import { analyzeDre, chatCerebro } from "@/lib/ai-analysis.functions";
-import {
-  applyChatPatch,
-  computeDre,
-  type WeekData,
-  type WeekPatch,
-} from "@/lib/dre-store";
+import { computeDre, type WeekData, type WeekPatch } from "@/lib/dre-store";
 
-type Msg = { role: "user" | "assistant"; content: string; images?: string[]; patchApplied?: boolean };
+type Msg = {
+  role: "user" | "assistant";
+  content: string;
+  images?: string[];
+  patchApplied?: boolean;
+};
 
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   week: WeekData;
-  onWeekChange: (w: WeekData, patch: WeekPatch) => boolean;
+  /** Aplica o patch na semana da data escolhida pelo usuário. */
+  onPatch: (patch: WeekPatch, meta: { note: string; targetDate: Date }) => boolean;
   periodLabel: string;
+  /** Data sugerida no seletor (início do período selecionado). */
+  defaultDate?: Date;
 };
 
 const SUGGESTIONS = [
@@ -48,19 +62,29 @@ function rawErrorText(e: unknown): string {
   }
 }
 
-export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabel }: Props) {
+export function AiChatSheet({
+  open,
+  onOpenChange,
+  week,
+  onPatch,
+  periodLabel,
+  defaultDate,
+}: Props) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [pendingImages, setPendingImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Data do lançamento — confirmada numa caixinha a cada mensagem enviada
+  const [entryDate, setEntryDate] = useState<Date>(() => defaultDate ?? new Date());
+  const [askDate, setAskDate] = useState<{ text: string; images: string[] } | null>(null);
+
   const chat = useServerFn(chatCerebro);
   const analyze = useServerFn(analyzeDre);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
-
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 60);
@@ -98,11 +122,18 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
     if (dataUrls.length) setPendingImages((p) => [...p, ...dataUrls].slice(0, 4));
   }
 
-  async function send(text: string) {
+  /** Abre a caixinha de data antes de enviar a mensagem. */
+  function requestSend(text: string) {
     const clean = text.trim();
-    const images = pendingImages;
+    if ((!clean && pendingImages.length === 0) || loading) return;
+    setAskDate({ text: clean, images: pendingImages });
+  }
+
+  async function send(text: string, images: string[], targetDate: Date) {
+    const clean = text.trim();
     if ((!clean && images.length === 0) || loading) return;
     setError("");
+    const dateLabel = format(targetDate, "dd MMM yyyy", { locale: ptBR });
     const next: Msg[] = [
       ...messages,
       { role: "user", content: clean, images: images.length ? images : undefined },
@@ -114,9 +145,12 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
     try {
       const res = await chat({
         data: {
-          messages: next.map((m) => ({
+          messages: next.map((m, i) => ({
             role: m.role,
-            content: m.content,
+            content:
+              i === next.length - 1 && m.role === "user"
+                ? `${m.content}\n\n(Data do lançamento informada pelo usuário: ${dateLabel})`
+                : m.content,
             ...(m.images && m.images.length ? { images: m.images } : {}),
           })),
           currentWeek: week,
@@ -141,15 +175,15 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
           patch.impostoComprovanteUrl = images[0];
           patch.impostoPagoEm = new Date().toISOString();
         }
-        const updated = applyChatPatch(week, patch, {
-          source: images.length > 0 ? "nota" : "chat",
-          note: clean || "(imagem)",
+        patchApplied = onPatch(patch, {
+          note: `${clean || "(imagem)"} · lançado em ${dateLabel}`,
+          targetDate,
         });
-        patchApplied = onWeekChange(updated, patch);
         if (!patchApplied) {
-          setError("No período consolidado, selecione uma única semana para registrar este tipo de lançamento.");
+          setError("Não foi possível registrar o lançamento nessa data.");
         }
       }
+
       setMessages([
         ...next,
         {
@@ -165,7 +199,6 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
       setTimeout(() => inputRef.current?.focus(), 30);
     }
   }
-
 
   async function runFullAnalysis() {
     const dre = computeDre(week);
@@ -238,7 +271,7 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
                 {SUGGESTIONS.map((s) => (
                   <button
                     key={s}
-                    onClick={() => send(s)}
+                    onClick={() => requestSend(s)}
                     className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-sm hover:border-indigo-400 hover:text-indigo-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
                   >
                     {s}
@@ -249,10 +282,7 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
           )}
 
           {messages.map((m, i) => (
-            <div
-              key={i}
-              className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-            >
+            <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
               <div
                 className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
                   m.role === "user"
@@ -352,7 +382,7 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              send(input);
+              requestSend(input);
             }}
             className="flex items-end gap-2"
           >
@@ -407,7 +437,7 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  send(input);
+                  requestSend(input);
                 }
               }}
               placeholder="Ex: vendi 8500 no iFood com 90 pedidos... ou anexe um print"
@@ -423,9 +453,48 @@ export function AiChatSheet({ open, onOpenChange, week, onWeekChange, periodLabe
               <Send className="h-4 w-4" />
             </Button>
           </form>
+          <p className="mt-1.5 flex items-center gap-1 text-[10px] text-slate-400">
+            <CalendarDays className="h-3 w-3" />
+            Ao enviar, você escolhe a data do lançamento.
+          </p>
         </div>
       </SheetContent>
+
+      {/* Caixinha de data — confirma o dia do lançamento antes de acionar o Cérebro */}
+      <Dialog open={!!askDate} onOpenChange={(o) => !o && setAskDate(null)}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-base">Data do lançamento</DialogTitle>
+            <DialogDescription className="text-xs">
+              Escolha o dia em que essas entradas/despesas devem ser registradas. O Cérebro grava na
+              semana correspondente.
+            </DialogDescription>
+          </DialogHeader>
+          <Calendar
+            mode="single"
+            locale={ptBR}
+            selected={entryDate}
+            onSelect={(d) => d && setEntryDate(d)}
+            className="pointer-events-auto rounded-md border border-slate-200 p-2 dark:border-slate-800"
+          />
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button variant="ghost" size="sm" onClick={() => setAskDate(null)}>
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              className="bg-indigo-600 hover:bg-indigo-700"
+              onClick={() => {
+                const payload = askDate;
+                setAskDate(null);
+                if (payload) void send(payload.text, payload.images, entryDate);
+              }}
+            >
+              Lançar em {format(entryDate, "dd MMM", { locale: ptBR })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Sheet>
   );
 }
-
