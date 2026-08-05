@@ -154,6 +154,7 @@ Regras do patch:
 - Valores em REAIS (number), sem "R$". NUNCA em percentual (exceto "simplesAliquota" que é %).
 - CUSTOS SÃO INCREMENTAIS: "cmv", "embalagens", "freteEntregador", "taxaPagamento", "fixos", "marketing", "promocoes" — cada mensagem SOMA no total da semana. Ex.: se o usuário diz "gastei 140 no hortifruti", envie cmv: 140 (não o total acumulado). Se depois disser "mais 79 de hortifruti", envie cmv: 79 de novo — o sistema soma.
 - Para "fixos" / "marketing" / "promocoes", use o label mais próximo do que o usuário disse (ex: "Aluguel", "Sem Limite", "Hortifruti"). Se o label já existe, o valor será somado; se não, será criado.
+- RÓTULOS DOS CUSTOS VARIÁVEIS: sempre que enviar "cmv", "embalagens", "freteEntregador" ou "taxaPagamento", envie também o rótulo correspondente ("cmvLabel", "embalagensLabel", "freteLabel", "taxaPagamentoLabel") com o NOME EXATO que o usuário citou — fornecedor, loja ou descrição (ex.: "Poços Food Service", "Hortifruti Central", "Motoboy João"). Nunca use rótulos genéricos como "CMV / insumos" quando o usuário nomeou o fornecedor.
 - RECEITAS por canal ("channels") são TOTAIS do canal na semana (substituem valores anteriores), pois vêm de prints do painel de cada app.
 - "promocoes" = cupons, cashback, frete grátis bancado pela casa, brindes.
 - "marketing" = mídia paga (ads iFood, Meta, Google, influenciadores).
