@@ -555,6 +555,23 @@ function Dashboard() {
     setHistoryTick((t) => t + 1);
   }
 
+  /** Apaga um lançamento do ledger a partir da DRE (busca em qual semana ele está). */
+  function deleteEntryAnywhere(entryId: string) {
+    if (typeof window !== "undefined" && !window.confirm("Apagar este lançamento?")) return;
+    if (!isAggregated) {
+      const next = removeLedgerEntry(week, entryId);
+      saveWeek(key, next);
+      setWeek(next);
+      setHistoryTick((t) => t + 1);
+      return;
+    }
+    const owner = matchedWeeks.find((m) => (m.data.ledger ?? []).some((e) => e.id === entryId));
+    if (!owner) return;
+    saveWeek(owner.key, removeLedgerEntry(owner.data, entryId));
+    setHistoryTick((t) => t + 1);
+  }
+
+
   function handleSelectWeek(entry: SavedWeekEntry) {
     setRange({
       from: entry.startDate,
