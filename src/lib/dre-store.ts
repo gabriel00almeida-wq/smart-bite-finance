@@ -156,6 +156,11 @@ export type WeekPatch = {
   freteEntregador?: number;
   cmv?: number;
   taxaPagamento?: number;
+  /** Rótulos descritivos informados pelo usuário (ex: "Poços Food Service"). */
+  cmvLabel?: string;
+  embalagensLabel?: string;
+  freteLabel?: string;
+  taxaPagamentoLabel?: string;
   totalPedidosOverride?: number;
   fixos?: LineItem[];
   marketing?: LineItem[];
