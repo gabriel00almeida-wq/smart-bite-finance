@@ -112,11 +112,18 @@ export function AiChatSheet({ open, onOpenChange, week, onPatch, periodLabel, de
     if (dataUrls.length) setPendingImages((p) => [...p, ...dataUrls].slice(0, 4));
   }
 
-  async function send(text: string) {
+  /** Abre a caixinha de data antes de enviar a mensagem. */
+  function requestSend(text: string) {
     const clean = text.trim();
-    const images = pendingImages;
+    if ((!clean && pendingImages.length === 0) || loading) return;
+    setAskDate({ text: clean, images: pendingImages });
+  }
+
+  async function send(text: string, images: string[], targetDate: Date) {
+    const clean = text.trim();
     if ((!clean && images.length === 0) || loading) return;
     setError("");
+    const dateLabel = format(targetDate, "dd MMM yyyy", { locale: ptBR });
     const next: Msg[] = [
       ...messages,
       { role: "user", content: clean, images: images.length ? images : undefined },
@@ -128,9 +135,12 @@ export function AiChatSheet({ open, onOpenChange, week, onPatch, periodLabel, de
     try {
       const res = await chat({
         data: {
-          messages: next.map((m) => ({
+          messages: next.map((m, i) => ({
             role: m.role,
-            content: m.content,
+            content:
+              i === next.length - 1 && m.role === "user"
+                ? `${m.content}\n\n(Data do lançamento informada pelo usuário: ${dateLabel})`
+                : m.content,
             ...(m.images && m.images.length ? { images: m.images } : {}),
           })),
           currentWeek: week,
@@ -155,15 +165,15 @@ export function AiChatSheet({ open, onOpenChange, week, onPatch, periodLabel, de
           patch.impostoComprovanteUrl = images[0];
           patch.impostoPagoEm = new Date().toISOString();
         }
-        const updated = applyChatPatch(week, patch, {
-          source: images.length > 0 ? "nota" : "chat",
-          note: clean || "(imagem)",
+        patchApplied = onPatch(patch, {
+          note: `${clean || "(imagem)"} · lançado em ${dateLabel}`,
+          targetDate,
         });
-        patchApplied = onWeekChange(updated, patch);
         if (!patchApplied) {
-          setError("No período consolidado, selecione uma única semana para registrar este tipo de lançamento.");
+          setError("Não foi possível registrar o lançamento nessa data.");
         }
       }
+
       setMessages([
         ...next,
         {
