@@ -447,9 +447,50 @@ export function AiChatSheet({ open, onOpenChange, week, onPatch, periodLabel, de
               <Send className="h-4 w-4" />
             </Button>
           </form>
+          <p className="mt-1.5 flex items-center gap-1 text-[10px] text-slate-400">
+            <CalendarDays className="h-3 w-3" />
+            Ao enviar, você escolhe a data do lançamento.
+          </p>
         </div>
       </SheetContent>
+
+      {/* Caixinha de data — confirma o dia do lançamento antes de acionar o Cérebro */}
+      <Dialog open={!!askDate} onOpenChange={(o) => !o && setAskDate(null)}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-base">Data do lançamento</DialogTitle>
+            <DialogDescription className="text-xs">
+              Escolha o dia em que essas entradas/despesas devem ser registradas. O Cérebro grava na
+              semana correspondente.
+            </DialogDescription>
+          </DialogHeader>
+          <Calendar
+            mode="single"
+            locale={ptBR}
+            selected={entryDate}
+            onSelect={(d) => d && setEntryDate(d)}
+            className="pointer-events-auto rounded-md border border-slate-200 p-2 dark:border-slate-800"
+          />
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button variant="ghost" size="sm" onClick={() => setAskDate(null)}>
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              className="bg-indigo-600 hover:bg-indigo-700"
+              onClick={() => {
+                const payload = askDate;
+                setAskDate(null);
+                if (payload) void send(payload.text, payload.images, entryDate);
+              }}
+            >
+              Lançar em {format(entryDate, "dd MMM", { locale: ptBR })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Sheet>
   );
 }
+
 
