@@ -461,52 +461,33 @@ function Dashboard() {
     setHistoryTick((t) => t + 1);
   }
 
-  function handleWeekChangeFromChat(data: WeekData, patch: WeekPatch): boolean {
+  /**
+   * Aplica o patch do Cérebro na semana da DATA escolhida pelo usuário no chat.
+   * Assim os lançamentos nunca caem numa semana errada, mesmo em visão consolidada.
+   */
+  function handleChatPatch(patch: WeekPatch, meta: { note: string; targetDate: Date }): boolean {
+    const targetKey = weekKey(meta.targetDate);
+    const base = loadWeek(targetKey);
+    const updated = applyChatPatch(base, patch, { source: "chat", note: meta.note });
+    saveWeek(targetKey, updated);
+
     const rateiosRemovidos = patch.removerRateios ?? [];
-    if (rateiosRemovidos.length > 0 && range?.from) {
-      removeMonthlyAllocationsUntilYearEnd(rateiosRemovidos, range.from);
+    if (rateiosRemovidos.length > 0) {
+      removeMonthlyAllocationsUntilYearEnd(rateiosRemovidos, meta.targetDate);
     }
-    const remocoes = patch.remocoes ?? [];
-    if (remocoes.length > 0 && isAggregated) {
-      for (const entry of matchedWeeks) {
-        saveWeek(entry.key, applyRemovals(entry.data, remocoes));
-      }
-      setHistoryTick((t) => t + 1);
-      return true;
+    const allocations = patch.rateiosMensais ?? [];
+    if (allocations.length > 0) {
+      applyMonthlyAllocationsUntilYearEnd(allocations, meta.targetDate, {
+        source: "chat",
+        note: `Rateio mensal solicitado pelo Cérebro · ${format(meta.targetDate, "dd MMM yyyy", { locale: ptBR })}`,
+      });
     }
 
-    const allocations = patch.rateiosMensais ?? [];
-    if (allocations.length > 0 && range?.from) {
-      if (!isAggregated) saveWeek(key, data);
-      applyMonthlyAllocationsUntilYearEnd(allocations, range.from, {
-        source: "chat",
-        note: `Rateio mensal solicitado pelo Cérebro · ${rangeLabel}`,
-      });
-      setHistoryTick((t) => t + 1);
-      return true;
-    }
-    if (rateiosRemovidos.length > 0) {
-      if (!isAggregated) saveWeek(key, data);
-      setHistoryTick((t) => t + 1);
-      return true;
-    }
-    if (isAggregated) {
-      if (patch.estoqueValor === undefined || matchedWeeks.length === 0) return false;
-      const closingWeek = matchedWeeks.reduce((latest, entry) =>
-        entry.startDate > latest.startDate ? entry : latest,
-      );
-      const updatedClosingWeek = applyPatch(closingWeek.data, {
-        estoqueValor: patch.estoqueValor,
-      });
-      saveWeek(closingWeek.key, updatedClosingWeek);
-      setHistoryTick((t) => t + 1);
-      return true;
-    }
-    saveWeek(key, data);
-    setWeek(data);
     setHistoryTick((t) => t + 1);
+    if (!isAggregated && targetKey === key) setWeek(loadWeek(targetKey));
     return true;
   }
+
 
   // ---- Edição manual de linhas da DRE (sem IA) ----
   const [manualEdit, setManualEdit] = useState<
