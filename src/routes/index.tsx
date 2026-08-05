@@ -265,12 +265,14 @@ function SubRowGroup({
   entries,
   onEdit,
   countOnly,
+  onDeleteEntry,
 }: {
   label: string;
   value: string;
   entries: WeekEntry[];
   onEdit?: () => void;
   countOnly?: boolean;
+  onDeleteEntry?: (entryId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const sorted = [...entries].sort((a, b) => a.at - b.at);
@@ -325,6 +327,16 @@ function SubRowGroup({
               <span className="shrink-0 font-mono tabular-nums text-slate-800 dark:text-slate-200">
                 {countOnly ? e.valor : currency(e.valor)}
               </span>
+              {onDeleteEntry && (
+                <button
+                  type="button"
+                  onClick={() => onDeleteEntry(e.id)}
+                  title="Apagar este lançamento"
+                  className="shrink-0 rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -332,6 +344,7 @@ function SubRowGroup({
     </div>
   );
 }
+
 
 function LedgerRow({ entry, onDelete }: { entry: WeekEntry; onDelete: () => void }) {
   const dt = new Date(entry.at);
@@ -541,6 +554,23 @@ function Dashboard() {
     }
     setHistoryTick((t) => t + 1);
   }
+
+  /** Apaga um lançamento do ledger a partir da DRE (busca em qual semana ele está). */
+  function deleteEntryAnywhere(entryId: string) {
+    if (typeof window !== "undefined" && !window.confirm("Apagar este lançamento?")) return;
+    if (!isAggregated) {
+      const next = removeLedgerEntry(week, entryId);
+      saveWeek(key, next);
+      setWeek(next);
+      setHistoryTick((t) => t + 1);
+      return;
+    }
+    const owner = matchedWeeks.find((m) => (m.data.ledger ?? []).some((e) => e.id === entryId));
+    if (!owner) return;
+    saveWeek(owner.key, removeLedgerEntry(owner.data, entryId));
+    setHistoryTick((t) => t + 1);
+  }
+
 
   function handleSelectWeek(entry: SavedWeekEntry) {
     setRange({
@@ -912,12 +942,14 @@ function Dashboard() {
                   label="  ↳ Insumos"
                   value={`- ${currency(dre.cmv)}`}
                   entries={ledgerBy("cmv")}
+                  onDeleteEntry={deleteEntryAnywhere}
                   onEdit={() => openManualEdit("CMV / insumos", { kind: "cmv" }, dre.cmv)}
                 />
                 <SubRowGroup
                   label="  ↳ Embalagens"
                   value={`- ${currency(dre.embalagens)}`}
                   entries={ledgerBy("embalagens")}
+                  onDeleteEntry={deleteEntryAnywhere}
                   onEdit={() =>
                     openManualEdit("Embalagens", { kind: "embalagens" }, dre.embalagens)
                   }
@@ -930,6 +962,7 @@ function Dashboard() {
                   label={`CMV Real (após estoque${dre.estoqueValor > 0 ? ` de ${currency(dre.estoqueValor)}` : ""})`}
                   value={`- ${currency(dre.cmvReal)} · ${dre.cmvRealPct.toFixed(1)}%`}
                   entries={ledgerBy("estoque")}
+                  onDeleteEntry={deleteEntryAnywhere}
                   onEdit={() =>
                     openManualEdit(
                       "Estoque final (abate no CMV Real)",
@@ -942,6 +975,7 @@ function Dashboard() {
                   label="Frete / entregador"
                   value={`- ${currency(dre.freteEntregador)}`}
                   entries={ledgerBy("frete")}
+                  onDeleteEntry={deleteEntryAnywhere}
                   onEdit={() =>
                     openManualEdit("Frete / entregador", { kind: "frete" }, dre.freteEntregador)
                   }
@@ -950,6 +984,7 @@ function Dashboard() {
                   label="Taxas / comissões dos apps"
                   value={`- ${currency(dre.taxasMarketplace)}`}
                   entries={ledgerBy("canal-taxa")}
+                  onDeleteEntry={deleteEntryAnywhere}
                 />
                 {week.channels
                   .filter((c) => c.taxas > 0 || c.receita > 0)
@@ -971,6 +1006,7 @@ function Dashboard() {
                   label="Descontos concedidos"
                   value={`- ${currency(dre.descontosTotal)}`}
                   entries={ledgerBy("canal-desconto")}
+                  onDeleteEntry={deleteEntryAnywhere}
                 />
                 {week.channels
                   .filter((c) => c.descontos > 0 || c.receita > 0)
@@ -992,6 +1028,7 @@ function Dashboard() {
                   label="Taxas de cartão / pagamento"
                   value={`- ${currency(dre.taxasPagamento)}`}
                   entries={ledgerBy("taxaPagamento")}
+                  onDeleteEntry={deleteEntryAnywhere}
                   onEdit={() =>
                     openManualEdit(
                       "Taxa de cartão / pagamento",
