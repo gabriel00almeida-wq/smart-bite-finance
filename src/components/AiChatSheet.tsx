@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Brain, Camera, ImagePlus, Loader2, Send, Sparkles, X } from "lucide-react";
+import { Brain, CalendarDays, Camera, ImagePlus, Loader2, Send, Sparkles, X } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 import {
   Sheet,
@@ -9,16 +11,20 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useServerFn } from "@tanstack/react-start";
 import { analyzeDre, chatCerebro } from "@/lib/ai-analysis.functions";
-import {
-  applyChatPatch,
-  computeDre,
-  type WeekData,
-  type WeekPatch,
-} from "@/lib/dre-store";
+import { computeDre, type WeekData, type WeekPatch } from "@/lib/dre-store";
 
 type Msg = { role: "user" | "assistant"; content: string; images?: string[]; patchApplied?: boolean };
 
@@ -26,9 +32,13 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   week: WeekData;
-  onWeekChange: (w: WeekData, patch: WeekPatch) => boolean;
+  /** Aplica o patch na semana da data escolhida pelo usuário. */
+  onPatch: (patch: WeekPatch, meta: { note: string; targetDate: Date }) => boolean;
   periodLabel: string;
+  /** Data sugerida no seletor (início do período selecionado). */
+  defaultDate?: Date;
 };
+
 
 const SUGGESTIONS = [
   "Vendi 12500 no iFood com 130 pedidos",
