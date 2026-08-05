@@ -240,15 +240,7 @@ function DreRow({
   );
 }
 
-function SubRow({
-  label,
-  value,
-  onEdit,
-}: {
-  label: string;
-  value: string;
-  onEdit?: () => void;
-}) {
+function SubRow({ label, value, onEdit }: { label: string; value: string; onEdit?: () => void }) {
   return (
     <div className="flex items-center justify-between gap-2 py-2.5 text-sm text-slate-600 dark:text-slate-400">
       <span className="min-w-0 flex-1 truncate">{label}</span>
@@ -323,7 +315,11 @@ function SubRowGroup({
                 <div className="truncate text-slate-700 dark:text-slate-300">{e.label}</div>
                 <div className="text-[10px] uppercase text-slate-400">
                   {new Date(e.at).toLocaleDateString("pt-BR")} ·{" "}
-                  {new Date(e.at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · {e.source}
+                  {new Date(e.at).toLocaleTimeString("pt-BR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}{" "}
+                  · {e.source}
                 </div>
               </div>
               <span className="shrink-0 font-mono tabular-nums text-slate-800 dark:text-slate-200">
@@ -336,9 +332,6 @@ function SubRowGroup({
     </div>
   );
 }
-
-
-
 
 function LedgerRow({ entry, onDelete }: { entry: WeekEntry; onDelete: () => void }) {
   const dt = new Date(entry.at);
@@ -369,7 +362,8 @@ function LedgerRow({ entry, onDelete }: { entry: WeekEntry; onDelete: () => void
         <div className="text-[10px] uppercase text-slate-400">
           {catLabel[entry.categoria] ?? entry.categoria} · {entry.source}
           {" · "}
-          {dt.toLocaleDateString("pt-BR")} {dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+          {dt.toLocaleDateString("pt-BR")}{" "}
+          {dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
         </div>
       </div>
       <button
@@ -387,7 +381,9 @@ function useDarkMode() {
   const [dark, setDark] = useState(false);
   useEffect(() => {
     const stored = localStorage.getItem("theme");
-    const initial = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const initial = stored
+      ? stored === "dark"
+      : window.matchMedia("(prefers-color-scheme: dark)").matches;
     setDark(initial);
   }, []);
   useEffect(() => {
@@ -409,7 +405,9 @@ function Dashboard() {
   const [aiOpen, setAiOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanMsg, setScanMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [scannedNotes, setScannedNotes] = useState<{ preview: string; summary: string; at: number }[]>([]);
+  const [scannedNotes, setScannedNotes] = useState<
+    { preview: string; summary: string; at: number }[]
+  >([]);
   const scanUploadRef = useRef<HTMLInputElement>(null);
   const scanCameraRef = useRef<HTMLInputElement>(null);
   const chat = useServerFn(chatCerebro);
@@ -441,7 +439,6 @@ function Dashboard() {
   // Lançamentos individuais (ledger) por categoria — usados para discriminar a DRE
   const ledgerBy = (cat: WeekEntry["categoria"]) =>
     (week.ledger ?? []).filter((e) => e.categoria === cat && e.valor > 0);
-
 
   const [savedWeeks, setSavedWeeks] = useState<SavedWeekEntry[]>([]);
   useEffect(() => {
@@ -488,11 +485,12 @@ function Dashboard() {
     return true;
   }
 
-
   // ---- Edição manual de linhas da DRE (sem IA) ----
-  const [manualEdit, setManualEdit] = useState<
-    { label: string; target: ManualTarget; valor: number } | null
-  >(null);
+  const [manualEdit, setManualEdit] = useState<{
+    label: string;
+    target: ManualTarget;
+    valor: number;
+  } | null>(null);
   const [manualValue, setManualValue_] = useState("");
 
   function openManualEdit(label: string, target: ManualTarget, valor: number) {
@@ -519,7 +517,6 @@ function Dashboard() {
     }
     setManualEdit(null);
   }
-
 
   function handleDeleteWeek(k: string) {
     if (typeof window !== "undefined" && !window.confirm("Excluir esta apuração?")) return;
@@ -611,11 +608,18 @@ function Dashboard() {
       }
       setScannedNotes((n) =>
         [
-          { preview: dataUrls[0], summary: res.reply || (hasPatch ? "Nota lida" : "Sem dados"), at: Date.now() },
+          {
+            preview: dataUrls[0],
+            summary: res.reply || (hasPatch ? "Nota lida" : "Sem dados"),
+            at: Date.now(),
+          },
           ...n,
         ].slice(0, 5),
       );
-      setScanMsg({ ok: hasPatch, text: hasPatch ? "DRE atualizada com a nota." : res.reply || "Nada extraído." });
+      setScanMsg({
+        ok: hasPatch,
+        text: hasPatch ? "DRE atualizada com a nota." : res.reply || "Nada extraído.",
+      });
     } catch (e) {
       setScanMsg({ ok: false, text: e instanceof Error ? e.message : "Erro ao processar a nota." });
     } finally {
@@ -717,7 +721,8 @@ function Dashboard() {
               <Layers className="h-4 w-4" />
               <span>
                 Visão consolidada de <strong>{matchedWeeks.length} semanas</strong> ({rangeLabel}).
-                Os valores da DRE estão somados. Selecione uma única semana no calendário para editar.
+                Os valores da DRE estão somados. Selecione uma única semana no calendário para
+                editar.
               </span>
             </div>
           )}
@@ -779,7 +784,10 @@ function Dashboard() {
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">Semana atual</p>
                 </div>
-                <Badge variant="secondary" className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                <Badge
+                  variant="secondary"
+                  className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                >
                   BRL
                 </Badge>
               </div>
@@ -787,7 +795,13 @@ function Dashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={revenueChart}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                    <XAxis dataKey="periodo" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                    <XAxis
+                      dataKey="periodo"
+                      stroke="#94a3b8"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
                     <YAxis
                       stroke="#94a3b8"
                       fontSize={12}
@@ -865,9 +879,7 @@ function Dashboard() {
                 <h3 className="text-base font-semibold text-slate-900 dark:text-white">
                   DRE — Demonstração do Resultado
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Período: {rangeLabel}
-                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Período: {rangeLabel}</p>
               </div>
               <ChevronDown className="h-4 w-4 text-slate-400" />
             </div>
@@ -881,14 +893,21 @@ function Dashboard() {
                       label={`${c.nome} (${dre.receitaBruta > 0 ? ((c.receita / dre.receitaBruta) * 100).toFixed(1) : 0}%)`}
                       value={currency(c.receita)}
                       onEdit={() =>
-                        openManualEdit(`Receita — ${c.nome}`, { kind: "canal", nome: c.nome, campo: "receita" }, c.receita)
+                        openManualEdit(
+                          `Receita — ${c.nome}`,
+                          { kind: "canal", nome: c.nome, campo: "receita" },
+                          c.receita,
+                        )
                       }
                     />
                   ))}
                 {dre.canais.length === 0 && <SubRow label="—" value={currency(0)} />}
               </DreRow>
               <DreRow label="Custos Variáveis" value={`- ${currency(dre.custosVariaveis)}`}>
-                <SubRow label="CMV Contábil (insumos + embalagens)" value={`- ${currency(dre.cmvContabil)} · ${dre.cmvContabilPct.toFixed(1)}% da receita bruta`} />
+                <SubRow
+                  label="CMV Contábil (insumos + embalagens)"
+                  value={`- ${currency(dre.cmvContabil)} · ${dre.cmvContabilPct.toFixed(1)}% da receita bruta`}
+                />
                 <SubRowGroup
                   label="  ↳ Insumos"
                   value={`- ${currency(dre.cmv)}`}
@@ -899,20 +918,33 @@ function Dashboard() {
                   label="  ↳ Embalagens"
                   value={`- ${currency(dre.embalagens)}`}
                   entries={ledgerBy("embalagens")}
-                  onEdit={() => openManualEdit("Embalagens", { kind: "embalagens" }, dre.embalagens)}
+                  onEdit={() =>
+                    openManualEdit("Embalagens", { kind: "embalagens" }, dre.embalagens)
+                  }
                 />
-                <SubRow label="CMV Financeiro (sobre receita líquida)" value={`${dre.cmvFinanceiroPct.toFixed(1)}% · líq. ${currency(dre.receitaLiquida)}`} />
+                <SubRow
+                  label="CMV Financeiro (sobre receita líquida)"
+                  value={`${dre.cmvFinanceiroPct.toFixed(1)}% · líq. ${currency(dre.receitaLiquida)}`}
+                />
                 <SubRowGroup
                   label={`CMV Real (após estoque${dre.estoqueValor > 0 ? ` de ${currency(dre.estoqueValor)}` : ""})`}
                   value={`- ${currency(dre.cmvReal)} · ${dre.cmvRealPct.toFixed(1)}%`}
                   entries={ledgerBy("estoque")}
-                  onEdit={() => openManualEdit("Estoque final (abate no CMV Real)", { kind: "estoque" }, dre.estoqueValor)}
+                  onEdit={() =>
+                    openManualEdit(
+                      "Estoque final (abate no CMV Real)",
+                      { kind: "estoque" },
+                      dre.estoqueValor,
+                    )
+                  }
                 />
                 <SubRowGroup
                   label="Frete / entregador"
                   value={`- ${currency(dre.freteEntregador)}`}
                   entries={ledgerBy("frete")}
-                  onEdit={() => openManualEdit("Frete / entregador", { kind: "frete" }, dre.freteEntregador)}
+                  onEdit={() =>
+                    openManualEdit("Frete / entregador", { kind: "frete" }, dre.freteEntregador)
+                  }
                 />
                 <SubRowGroup
                   label="Taxas / comissões dos apps"
@@ -927,7 +959,11 @@ function Dashboard() {
                       label={`  ↳ Taxa ${c.nome}`}
                       value={`- ${currency(c.taxas)}`}
                       onEdit={() =>
-                        openManualEdit(`Taxa do app — ${c.nome}`, { kind: "canal", nome: c.nome, campo: "taxas" }, c.taxas)
+                        openManualEdit(
+                          `Taxa do app — ${c.nome}`,
+                          { kind: "canal", nome: c.nome, campo: "taxas" },
+                          c.taxas,
+                        )
                       }
                     />
                   ))}
@@ -944,7 +980,11 @@ function Dashboard() {
                       label={`  ↳ Descontos ${c.nome}`}
                       value={`- ${currency(c.descontos)}`}
                       onEdit={() =>
-                        openManualEdit(`Descontos — ${c.nome}`, { kind: "canal", nome: c.nome, campo: "descontos" }, c.descontos)
+                        openManualEdit(
+                          `Descontos — ${c.nome}`,
+                          { kind: "canal", nome: c.nome, campo: "descontos" },
+                          c.descontos,
+                        )
                       }
                     />
                   ))}
@@ -952,9 +992,14 @@ function Dashboard() {
                   label="Taxas de cartão / pagamento"
                   value={`- ${currency(dre.taxasPagamento)}`}
                   entries={ledgerBy("taxaPagamento")}
-                  onEdit={() => openManualEdit("Taxa de cartão / pagamento", { kind: "taxaPagamento" }, dre.taxasPagamento)}
+                  onEdit={() =>
+                    openManualEdit(
+                      "Taxa de cartão / pagamento",
+                      { kind: "taxaPagamento" },
+                      dre.taxasPagamento,
+                    )
+                  }
                 />
-
               </DreRow>
               <DreRow
                 label="Margem de Contribuição"
@@ -969,7 +1014,11 @@ function Dashboard() {
                       label={f.label}
                       value={`- ${currency(f.valor)}`}
                       onEdit={() =>
-                        openManualEdit(f.label, { kind: "linha", lista: "fixos", label: f.label }, f.valor)
+                        openManualEdit(
+                          f.label,
+                          { kind: "linha", lista: "fixos", label: f.label },
+                          f.valor,
+                        )
                       }
                     />
                   ))}
@@ -984,7 +1033,11 @@ function Dashboard() {
                       label={f.label}
                       value={`- ${currency(f.valor)}`}
                       onEdit={() =>
-                        openManualEdit(f.label, { kind: "linha", lista: "marketing", label: f.label }, f.valor)
+                        openManualEdit(
+                          f.label,
+                          { kind: "linha", lista: "marketing", label: f.label },
+                          f.valor,
+                        )
                       }
                     />
                   ))}
@@ -999,7 +1052,11 @@ function Dashboard() {
                       label={f.label}
                       value={`- ${currency(f.valor)}`}
                       onEdit={() =>
-                        openManualEdit(f.label, { kind: "linha", lista: "promocoes", label: f.label }, f.valor)
+                        openManualEdit(
+                          f.label,
+                          { kind: "linha", lista: "promocoes", label: f.label },
+                          f.valor,
+                        )
                       }
                     />
                   ))}
@@ -1016,20 +1073,34 @@ function Dashboard() {
                 <SubRow
                   label={`Alíquota aplicada`}
                   value={`${dre.simplesAliquota.toFixed(2)}% sobre ${currency(dre.receitaBruta)}`}
-                  onEdit={() => openManualEdit("Alíquota do Simples (%)", { kind: "aliquota" }, dre.simplesAliquota)}
+                  onEdit={() =>
+                    openManualEdit(
+                      "Alíquota do Simples (%)",
+                      { kind: "aliquota" },
+                      dre.simplesAliquota,
+                    )
+                  }
                 />
                 <SubRow label="Provisão do período" value={currency(dre.impostoProvisao)} />
                 {dre.impostoPago ? (
                   <SubRow
                     label="Valor pago (abatido)"
                     value={`- ${currency(dre.impostoDeduzido)}`}
-                    onEdit={() => openManualEdit("Imposto pago (R$)", { kind: "impostoPagoValor" }, dre.impostoDeduzido)}
+                    onEdit={() =>
+                      openManualEdit(
+                        "Imposto pago (R$)",
+                        { kind: "impostoPagoValor" },
+                        dre.impostoDeduzido,
+                      )
+                    }
                   />
                 ) : (
                   <SubRow
                     label="Status"
                     value="Aguardando comprovante — não abatido no lucro"
-                    onEdit={() => openManualEdit("Imposto pago (R$)", { kind: "impostoPagoValor" }, 0)}
+                    onEdit={() =>
+                      openManualEdit("Imposto pago (R$)", { kind: "impostoPagoValor" }, 0)
+                    }
                   />
                 )}
                 {!dre.impostoPago && dre.impostoProvisao > 0 && (
@@ -1166,8 +1237,12 @@ function Dashboard() {
                 </h4>
                 <Tabs defaultValue="refrigerados">
                   <TabsList className="grid w-full grid-cols-2 h-8">
-                    <TabsTrigger value="refrigerados" className="text-xs">Refrigerados</TabsTrigger>
-                    <TabsTrigger value="secos" className="text-xs">Secos</TabsTrigger>
+                    <TabsTrigger value="refrigerados" className="text-xs">
+                      Refrigerados
+                    </TabsTrigger>
+                    <TabsTrigger value="secos" className="text-xs">
+                      Secos
+                    </TabsTrigger>
                   </TabsList>
 
                   {[
@@ -1226,24 +1301,33 @@ function Dashboard() {
                     Histórico de lançamentos
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {savedWeeks.length} {savedWeeks.length === 1 ? "semana salva" : "semanas salvas"} · clique para abrir
+                    {savedWeeks.length}{" "}
+                    {savedWeeks.length === 1 ? "semana salva" : "semanas salvas"} · clique para
+                    abrir
                   </p>
                 </div>
               </div>
             </div>
             {savedWeeks.length === 0 ? (
               <div className="px-5 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                Nenhuma apuração salva ainda. Preencha uma semana em <strong>Editar dados</strong> para começar.
+                Nenhuma apuração salva ainda. Preencha uma semana em <strong>Editar dados</strong>{" "}
+                para começar.
               </div>
             ) : (
-              <Accordion type="multiple" className="divide-y divide-slate-100 dark:divide-slate-800">
+              <Accordion
+                type="multiple"
+                className="divide-y divide-slate-100 dark:divide-slate-800"
+              >
                 {savedWeeks.map((entry) => {
                   const d = computeDre(entry.data);
                   const end = addDays(entry.startDate, 6);
                   const label = `${format(entry.startDate, "dd MMM", { locale: ptBR })} → ${format(end, "dd MMM yyyy", { locale: ptBR })}`;
                   const isCurrent = entry.key === key && !isAggregated;
                   const ledger = (entry.data.ledger ?? []).slice().sort((a, b) => a.at - b.at);
-                  const ledgerTotal = ledger.reduce((s, e) => s + (["canal-pedidos"].includes(e.categoria) ? 0 : e.valor), 0);
+                  const ledgerTotal = ledger.reduce(
+                    (s, e) => s + (["canal-pedidos"].includes(e.categoria) ? 0 : e.valor),
+                    0,
+                  );
                   return (
                     <AccordionItem key={entry.key} value={entry.key} className="border-0">
                       <div
@@ -1254,7 +1338,9 @@ function Dashboard() {
                         <AccordionTrigger className="flex-1 py-3 hover:no-underline">
                           <div className="grid w-full grid-cols-12 items-center gap-y-1 pr-2 text-left text-sm">
                             <div className="col-span-12 flex flex-col sm:col-span-4">
-                              <span className="font-medium text-slate-800 dark:text-slate-200">{label}</span>
+                              <span className="font-medium text-slate-800 dark:text-slate-200">
+                                {label}
+                              </span>
                               <span className="text-[10px] uppercase text-slate-400">
                                 {ledger.length} {ledger.length === 1 ? "lançamento" : "lançamentos"}
                                 {isCurrent && " · selecionada"}
@@ -1317,7 +1403,9 @@ function Dashboard() {
                               />
                             ))}
                             <div className="flex items-center justify-between py-2.5 pt-3 text-sm font-semibold">
-                              <span className="text-slate-800 dark:text-slate-200">Total lançado</span>
+                              <span className="text-slate-800 dark:text-slate-200">
+                                Total lançado
+                              </span>
                               <span className="font-mono tabular-nums text-slate-900 dark:text-white">
                                 {currency(ledgerTotal)}
                               </span>
@@ -1377,7 +1465,10 @@ function Dashboard() {
             <Button variant="outline" onClick={() => setManualEdit(null)}>
               Cancelar
             </Button>
-            <Button className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={commitManualEdit}>
+            <Button
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
+              onClick={commitManualEdit}
+            >
               Salvar
             </Button>
           </div>
@@ -1386,4 +1477,3 @@ function Dashboard() {
     </div>
   );
 }
-

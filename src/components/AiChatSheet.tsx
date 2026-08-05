@@ -26,7 +26,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { analyzeDre, chatCerebro } from "@/lib/ai-analysis.functions";
 import { computeDre, type WeekData, type WeekPatch } from "@/lib/dre-store";
 
-type Msg = { role: "user" | "assistant"; content: string; images?: string[]; patchApplied?: boolean };
+type Msg = {
+  role: "user" | "assistant";
+  content: string;
+  images?: string[];
+  patchApplied?: boolean;
+};
 
 type Props = {
   open: boolean;
@@ -38,7 +43,6 @@ type Props = {
   /** Data sugerida no seletor (início do período selecionado). */
   defaultDate?: Date;
 };
-
 
 const SUGGESTIONS = [
   "Vendi 12500 no iFood com 130 pedidos",
@@ -58,7 +62,14 @@ function rawErrorText(e: unknown): string {
   }
 }
 
-export function AiChatSheet({ open, onOpenChange, week, onPatch, periodLabel, defaultDate }: Props) {
+export function AiChatSheet({
+  open,
+  onOpenChange,
+  week,
+  onPatch,
+  periodLabel,
+  defaultDate,
+}: Props) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [pendingImages, setPendingImages] = useState<string[]>([]);
@@ -74,7 +85,6 @@ export function AiChatSheet({ open, onOpenChange, week, onPatch, periodLabel, de
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
-
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 60);
@@ -190,7 +200,6 @@ export function AiChatSheet({ open, onOpenChange, week, onPatch, periodLabel, de
     }
   }
 
-
   async function runFullAnalysis() {
     const dre = computeDre(week);
     if (dre.receitaBruta <= 0) {
@@ -273,10 +282,7 @@ export function AiChatSheet({ open, onOpenChange, week, onPatch, periodLabel, de
           )}
 
           {messages.map((m, i) => (
-            <div
-              key={i}
-              className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-            >
+            <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
               <div
                 className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
                   m.role === "user"
@@ -492,5 +498,3 @@ export function AiChatSheet({ open, onOpenChange, week, onPatch, periodLabel, de
     </Sheet>
   );
 }
-
-
