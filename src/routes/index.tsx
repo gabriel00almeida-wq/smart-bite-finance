@@ -91,7 +91,7 @@ import {
   type WeekData,
   type SavedWeekEntry,
 } from "@/lib/dre-store";
-import { applyPatch, type WeekPatch } from "@/lib/dre-store";
+import { applyPatch, applyChatPatch, type WeekPatch } from "@/lib/dre-store";
 import { EditWeekSheet } from "@/components/EditWeekSheet";
 import { AiChatSheet } from "@/components/AiChatSheet";
 import { Sidebar } from "@/components/Sidebar";
@@ -1348,7 +1348,8 @@ function Dashboard() {
         open={aiOpen}
         onOpenChange={setAiOpen}
         week={week}
-        onWeekChange={handleWeekChangeFromChat}
+        onPatch={handleChatPatch}
+        defaultDate={range?.from}
         periodLabel={rangeLabel}
       />
 
