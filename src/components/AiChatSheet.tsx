@@ -262,7 +262,7 @@ export function AiChatSheet({ open, onOpenChange, week, onPatch, periodLabel, de
                 {SUGGESTIONS.map((s) => (
                   <button
                     key={s}
-                    onClick={() => send(s)}
+                    onClick={() => requestSend(s)}
                     className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-sm hover:border-indigo-400 hover:text-indigo-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
                   >
                     {s}
@@ -376,7 +376,7 @@ export function AiChatSheet({ open, onOpenChange, week, onPatch, periodLabel, de
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              send(input);
+              requestSend(input);
             }}
             className="flex items-end gap-2"
           >
@@ -431,7 +431,7 @@ export function AiChatSheet({ open, onOpenChange, week, onPatch, periodLabel, de
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  send(input);
+                  requestSend(input);
                 }
               }}
               placeholder="Ex: vendi 8500 no iFood com 90 pedidos... ou anexe um print"
