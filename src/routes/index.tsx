@@ -903,28 +903,36 @@ function Dashboard() {
               </DreRow>
               <DreRow label="Custos Variáveis" value={`- ${currency(dre.custosVariaveis)}`}>
                 <SubRow label="CMV Contábil (insumos + embalagens)" value={`- ${currency(dre.cmvContabil)} · ${dre.cmvContabilPct.toFixed(1)}% da receita bruta`} />
-                <SubRow
+                <SubRowGroup
                   label="  ↳ Insumos"
                   value={`- ${currency(dre.cmv)}`}
+                  entries={ledgerBy("cmv")}
                   onEdit={() => openManualEdit("CMV / insumos", { kind: "cmv" }, dre.cmv)}
                 />
-                <SubRow
+                <SubRowGroup
                   label="  ↳ Embalagens"
                   value={`- ${currency(dre.embalagens)}`}
+                  entries={ledgerBy("embalagens")}
                   onEdit={() => openManualEdit("Embalagens", { kind: "embalagens" }, dre.embalagens)}
                 />
                 <SubRow label="CMV Financeiro (sobre receita líquida)" value={`${dre.cmvFinanceiroPct.toFixed(1)}% · líq. ${currency(dre.receitaLiquida)}`} />
-                <SubRow
+                <SubRowGroup
                   label={`CMV Real (após estoque${dre.estoqueValor > 0 ? ` de ${currency(dre.estoqueValor)}` : ""})`}
                   value={`- ${currency(dre.cmvReal)} · ${dre.cmvRealPct.toFixed(1)}%`}
+                  entries={ledgerBy("estoque")}
                   onEdit={() => openManualEdit("Estoque final (abate no CMV Real)", { kind: "estoque" }, dre.estoqueValor)}
                 />
-                <SubRow
+                <SubRowGroup
                   label="Frete / entregador"
                   value={`- ${currency(dre.freteEntregador)}`}
+                  entries={ledgerBy("frete")}
                   onEdit={() => openManualEdit("Frete / entregador", { kind: "frete" }, dre.freteEntregador)}
                 />
-                <SubRow label="Taxas / comissões dos apps" value={`- ${currency(dre.taxasMarketplace)}`} />
+                <SubRowGroup
+                  label="Taxas / comissões dos apps"
+                  value={`- ${currency(dre.taxasMarketplace)}`}
+                  entries={ledgerBy("canal-taxa")}
+                />
                 {week.channels
                   .filter((c) => c.taxas > 0 || c.receita > 0)
                   .map((c) => (
@@ -937,7 +945,11 @@ function Dashboard() {
                       }
                     />
                   ))}
-                <SubRow label="Descontos concedidos" value={`- ${currency(dre.descontosTotal)}`} />
+                <SubRowGroup
+                  label="Descontos concedidos"
+                  value={`- ${currency(dre.descontosTotal)}`}
+                  entries={ledgerBy("canal-desconto")}
+                />
                 {week.channels
                   .filter((c) => c.descontos > 0 || c.receita > 0)
                   .map((c) => (
@@ -950,11 +962,13 @@ function Dashboard() {
                       }
                     />
                   ))}
-                <SubRow
+                <SubRowGroup
                   label="Taxas de cartão / pagamento"
                   value={`- ${currency(dre.taxasPagamento)}`}
+                  entries={ledgerBy("taxaPagamento")}
                   onEdit={() => openManualEdit("Taxa de cartão / pagamento", { kind: "taxaPagamento" }, dre.taxasPagamento)}
                 />
+
               </DreRow>
               <DreRow
                 label="Margem de Contribuição"
