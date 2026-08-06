@@ -1109,6 +1109,11 @@ function Dashboard() {
             </div>
           </section>
 
+          {/* Acompanhamento de margem operacional (meta 15%-20%) */}
+          <LucroOperacionalChart data={lucroOpSeries} />
+
+
+
 
 
           {/* DRE */}
