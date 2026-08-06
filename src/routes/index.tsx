@@ -691,7 +691,7 @@ function Dashboard() {
   const chartWeeks = useMemo(() => {
     if (!range?.from) return savedWeeks;
     const to = range.to ?? range.from;
-    return savedWeeks.filter((w) => w.endDate >= range.from! && w.startDate <= to);
+    return savedWeeks.filter((w) => addDays(w.startDate, 6) >= range.from! && w.startDate <= to);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedWeeks, range?.from?.getTime(), range?.to?.getTime()]);
 
