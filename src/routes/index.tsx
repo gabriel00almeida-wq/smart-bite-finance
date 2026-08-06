@@ -668,12 +668,19 @@ function Dashboard() {
     },
   ];
 
+  // Base de cálculo do CMV: faturamento - promoções - descontos das plataformas
+  const cmvBase = Math.max(0, dre.receitaBruta - dre.promocoesTotal - dre.descontosTotal);
+
   // Pizza de todos os gastos do período
   const expenseChart = useMemo(
     () =>
       [
-        { nome: "Insumos (CMV)", valor: dre.cmv, color: "#ef4444" },
-        { nome: "Embalagens", valor: dre.embalagens, color: "#f97316" },
+        {
+          nome: "CMV (insumos + embalagens)",
+          valor: dre.cmvContabil,
+          color: "#ef4444",
+          isCmv: true,
+        },
         { nome: "Frete / Entregador", valor: dre.freteEntregador, color: "#eab308" },
         { nome: "Taxas apps", valor: dre.taxasMarketplace, color: "#8b5cf6" },
         { nome: "Taxas cartão", valor: dre.taxasPagamento, color: "#0ea5e9" },
@@ -686,6 +693,8 @@ function Dashboard() {
     [dre],
   );
   const expenseTotal = expenseChart.reduce((s, e) => s + e.valor, 0);
+  const cmvPctBase = cmvBase > 0 ? (dre.cmvContabil / cmvBase) * 100 : 0;
+
 
   // Semanas usadas nos gráficos temporais: apenas as do período selecionado
   const chartWeeks = useMemo(() => {
@@ -983,6 +992,11 @@ function Dashboard() {
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Todos os custos do período · Total {currency(expenseTotal)}
               </p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                CMV = {currency(dre.cmvContabil)} ({cmvPctBase.toFixed(1)}%) sobre a base de{" "}
+                {currency(cmvBase)} = faturamento − promoções − descontos das plataformas
+              </p>
+
             </div>
             {expenseChart.length > 0 ? (
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -1011,9 +1025,16 @@ function Dashboard() {
                       <span className="font-medium text-slate-900 dark:text-white">
                         {currency(e.valor)}{" "}
                         <span className="text-xs text-slate-400">
-                          ({expenseTotal > 0 ? ((e.valor / expenseTotal) * 100).toFixed(1) : 0}%)
+                          (
+                          {e.isCmv
+                            ? cmvPctBase.toFixed(1)
+                            : expenseTotal > 0
+                              ? ((e.valor / expenseTotal) * 100).toFixed(1)
+                              : 0}
+                          %{e.isCmv ? " do fat. líq." : ""})
                         </span>
                       </span>
+
                     </li>
                   ))}
                 </ul>
