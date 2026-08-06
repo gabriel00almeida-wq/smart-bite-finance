@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import LucroOperacionalChart from "@/components/LucroOperacionalChart";
 import ReactMarkdown from "react-markdown";
 import { format, startOfWeek, endOfWeek, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -705,6 +706,27 @@ function Dashboard() {
     [savedWeeks],
   );
 
+  // Série de margem operacional (meta 15%–20%) por semana apurada
+  const lucroOpSeries = useMemo(
+    () =>
+      savedWeeks
+        .slice()
+        .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
+        .map((w) => {
+          const d = computeDre(w.data);
+          const lucroOperacional =
+            d.margemContribuicaoValor - d.fixosTotal - d.marketingTotal - d.promocoesTotal;
+          return {
+            periodo: format(w.startDate, "dd/MM", { locale: ptBR }),
+            faturamento: Math.round(d.receitaBruta * 100) / 100,
+            lucroOperacional: Math.round(lucroOperacional * 100) / 100,
+          };
+        }),
+    [savedWeeks],
+  );
+
+
+
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -1087,6 +1109,11 @@ function Dashboard() {
               )}
             </div>
           </section>
+
+          {/* Acompanhamento de margem operacional (meta 15%-20%) */}
+          <LucroOperacionalChart data={lucroOpSeries} />
+
+
 
 
 
