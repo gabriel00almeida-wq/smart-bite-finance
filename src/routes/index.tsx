@@ -687,10 +687,18 @@ function Dashboard() {
   );
   const expenseTotal = expenseChart.reduce((s, e) => s + e.valor, 0);
 
-  // Série temporal (EBITDA / Lucro operacional) por semana salva
+  // Semanas usadas nos gráficos temporais: apenas as do período selecionado
+  const chartWeeks = useMemo(() => {
+    if (!range?.from) return savedWeeks;
+    const to = range.to ?? range.from;
+    return savedWeeks.filter((w) => addDays(w.startDate, 6) >= range.from! && w.startDate <= to);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedWeeks, range?.from?.getTime(), range?.to?.getTime()]);
+
+  // Série temporal (EBITDA / Lucro operacional) por semana do período
   const timeline = useMemo(
     () =>
-      savedWeeks
+      chartWeeks
         .slice()
         .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
         .map((w) => {
@@ -703,13 +711,13 @@ function Dashboard() {
             "Lucro Operacional": Math.round(d.lucroLiquido * 100) / 100,
           };
         }),
-    [savedWeeks],
+    [chartWeeks],
   );
 
-  // Série de margem operacional (meta 15%–20%) por semana apurada
+  // Série de margem operacional (meta 15%–20%) por semana do período
   const lucroOpSeries = useMemo(
     () =>
-      savedWeeks
+      chartWeeks
         .slice()
         .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
         .map((w) => {
@@ -722,8 +730,9 @@ function Dashboard() {
             lucroOperacional: Math.round(lucroOperacional * 100) / 100,
           };
         }),
-    [savedWeeks],
+    [chartWeeks],
   );
+
 
 
 
