@@ -1025,9 +1025,16 @@ function Dashboard() {
                       <span className="font-medium text-slate-900 dark:text-white">
                         {currency(e.valor)}{" "}
                         <span className="text-xs text-slate-400">
-                          ({expenseTotal > 0 ? ((e.valor / expenseTotal) * 100).toFixed(1) : 0}%)
+                          (
+                          {e.isCmv
+                            ? cmvPctBase.toFixed(1)
+                            : expenseTotal > 0
+                              ? ((e.valor / expenseTotal) * 100).toFixed(1)
+                              : 0}
+                          %{e.isCmv ? " do fat. líq." : ""})
                         </span>
                       </span>
+
                     </li>
                   ))}
                 </ul>
