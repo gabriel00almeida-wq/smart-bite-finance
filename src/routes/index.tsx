@@ -665,6 +665,45 @@ function Dashboard() {
     },
   ];
 
+  // Pizza de todos os gastos do período
+  const expenseChart = useMemo(
+    () =>
+      [
+        { nome: "Insumos (CMV)", valor: dre.cmv, color: "#ef4444" },
+        { nome: "Embalagens", valor: dre.embalagens, color: "#f97316" },
+        { nome: "Frete / Entregador", valor: dre.freteEntregador, color: "#eab308" },
+        { nome: "Taxas apps", valor: dre.taxasMarketplace, color: "#8b5cf6" },
+        { nome: "Taxas cartão", valor: dre.taxasPagamento, color: "#0ea5e9" },
+        { nome: "Descontos", valor: dre.descontosTotal, color: "#ec4899" },
+        { nome: "Promoções", valor: dre.promocoesTotal, color: "#f43f5e" },
+        { nome: "Custos Fixos", valor: dre.fixosTotal, color: "#1e293b" },
+        { nome: "Marketing", valor: dre.marketingTotal, color: "#14b8a6" },
+        { nome: "Imposto pago", valor: dre.impostoDeduzido, color: "#64748b" },
+      ].filter((e) => e.valor > 0),
+    [dre],
+  );
+  const expenseTotal = expenseChart.reduce((s, e) => s + e.valor, 0);
+
+  // Série temporal (EBITDA / Lucro operacional) por semana salva
+  const timeline = useMemo(
+    () =>
+      savedWeeks
+        .slice()
+        .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
+        .map((w) => {
+          const d = computeDre(w.data);
+          const ebitda =
+            d.margemContribuicaoValor - d.fixosTotal - d.marketingTotal - d.promocoesTotal;
+          return {
+            periodo: format(w.startDate, "dd/MM", { locale: ptBR }),
+            EBITDA: Math.round(ebitda * 100) / 100,
+            "Lucro Operacional": Math.round(d.lucroLiquido * 100) / 100,
+          };
+        }),
+    [savedWeeks],
+  );
+
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <Sidebar />
