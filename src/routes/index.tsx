@@ -992,6 +992,11 @@ function Dashboard() {
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Todos os custos do período · Total {currency(expenseTotal)}
               </p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                CMV = {currency(dre.cmvContabil)} ({cmvPctBase.toFixed(1)}%) sobre a base de{" "}
+                {currency(cmvBase)} = faturamento − promoções − descontos das plataformas
+              </p>
+
             </div>
             {expenseChart.length > 0 ? (
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
