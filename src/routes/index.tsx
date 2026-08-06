@@ -943,6 +943,153 @@ function Dashboard() {
             </div>
           </section>
 
+          {/* Gastos (pizza) */}
+          <section className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-slate-800">
+            <div className="mb-4">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                Composição dos Gastos
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Todos os custos do período · Total {currency(expenseTotal)}
+              </p>
+            </div>
+            {expenseChart.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={expenseChart} dataKey="valor" nameKey="nome" outerRadius={100}>
+                        {expenseChart.map((e) => (
+                          <Cell key={e.nome} fill={e.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v: number) => currency(v)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <ul className="grid content-center gap-2">
+                  {expenseChart.map((e) => (
+                    <li key={e.nome} className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ background: e.color }}
+                        />
+                        {e.nome}
+                      </span>
+                      <span className="font-medium text-slate-900 dark:text-white">
+                        {currency(e.valor)}{" "}
+                        <span className="text-xs text-slate-400">
+                          ({expenseTotal > 0 ? ((e.valor / expenseTotal) * 100).toFixed(1) : 0}%)
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <div className="grid h-40 place-items-center text-xs text-slate-400">
+                Sem gastos lançados no período
+              </div>
+            )}
+          </section>
+
+          {/* EBITDA temporal */}
+          <section className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-slate-800">
+            <div className="mb-4">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                EBITDA — evolução
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Resultado operacional antes de impostos, por semana apurada
+              </p>
+            </div>
+            <div className="h-64">
+              {timeline.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={timeline}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                    <XAxis
+                      dataKey="periodo"
+                      stroke="#94a3b8"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      stroke="#94a3b8"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => `R$${Math.round(v / 1000)}k`}
+                    />
+                    <Tooltip formatter={(v: number) => currency(v)} />
+                    <Line
+                      type="monotone"
+                      dataKey="EBITDA"
+                      stroke="#6366f1"
+                      strokeWidth={2.5}
+                      dot={{ r: 3 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="grid h-full place-items-center text-xs text-slate-400">
+                  Sem semanas apuradas
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Lucro operacional temporal */}
+          <section className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-slate-800">
+            <div className="mb-4">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                Lucro Operacional — evolução
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Resultado final por semana apurada (após impostos pagos)
+              </p>
+            </div>
+            <div className="h-64">
+              {timeline.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={timeline}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                    <XAxis
+                      dataKey="periodo"
+                      stroke="#94a3b8"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      stroke="#94a3b8"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => `R$${Math.round(v / 1000)}k`}
+                    />
+                    <Tooltip formatter={(v: number) => currency(v)} />
+                    <Line
+                      type="monotone"
+                      dataKey="Lucro Operacional"
+                      stroke="#10b981"
+                      strokeWidth={2.5}
+                      dot={{ r: 3 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="grid h-full place-items-center text-xs text-slate-400">
+                  Sem semanas apuradas
+                </div>
+              )}
+            </div>
+          </section>
+
+
+
           {/* DRE */}
           <section className="rounded-xl bg-white shadow-sm ring-1 ring-slate-200/60 dark:bg-slate-900 dark:ring-slate-800">
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
